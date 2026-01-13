@@ -11,7 +11,6 @@ export default function LoginApp() {
             <div className="marquee-track">
               <span className="chip">AI 브랜드 진단 리포트</span>
               <span className="chip">인터뷰 인사이트 요약</span>
-              <span className="chip">브랜드 키트 자동 생성</span>
               <span className="chip">네이밍·로고 추천</span>
               <span className="chip">홈페이지 템플릿 제작</span>
               <span className="chip">사업계획서·IR 초안</span>
@@ -19,7 +18,6 @@ export default function LoginApp() {
               {/* 끊김 방지: 동일 문구 반복 */}
               <span className="chip">AI 브랜드 진단 리포트</span>
               <span className="chip">인터뷰 인사이트 요약</span>
-              <span className="chip">브랜드 키트 자동 생성</span>
               <span className="chip">네이밍·로고 추천</span>
               <span className="chip">홈페이지 템플릿 제작</span>
               <span className="chip">사업계획서·IR 초안</span>
