@@ -4,7 +4,9 @@ export default function LoginApp() {
       <div className="login-shell split">
         <section className="login-hero navy-panel">
           <div className="hero-top">
-            <span className="hero-title-line">BrandPliot</span>
+            <span className="hero-title-line">Smart</span>
+            <span className="hero-title-line">Management,</span>
+            <span className="hero-title-line">Smart Start.</span>
           </div>
           <p className="hero-copy subtle">
             가장 완벽한 분석으로
@@ -19,31 +21,39 @@ export default function LoginApp() {
           <h2>LOGIN</h2>
           <form className="login-form">
             <div className="field">
-              <label htmlFor="login-email">ID(E-mail)</label>
-              <input
-                id="login-email"
-                type="email"
-                placeholder="ID (E-mail) 입력"
-              />
+              <label htmlFor="login-id">아이디 (E-mail 계정)</label>
+              <input id="login-id" type="text" placeholder="이메일 아이디" />
             </div>
             <div className="field">
               <label htmlFor="login-password">비밀번호</label>
-              <div className="input-with-icon">
-                <input
-                  id="login-password"
-                  type="password"
-                  placeholder="비밀번호 입력"
-                />
-              </div>
+              <input
+                id="login-password"
+                type="password"
+                placeholder="비밀번호 입력"
+              />
             </div>
-            <button type="submit" className="login-primary full">
+            <div className="login-links">
+              <button type="button">아이디 찾기</button>
+              <span className="dot" aria-hidden="true" />
+              <button type="button">비밀번호 찾기</button>
+            </div>
+            <button type="submit" className="login-primary">
               로그인
             </button>
-            <p className="signup-inline">
-              저희와 함께 하시겠습니까? <button type="button">회원가입</button>
-              <br></br>
-              ID/비밀번호를 찾으시겠습니까? <button type="button">ID/비밀번호 찾기</button> 
-            </p>
+            <button type="button" className="login-easy">
+              간편로그인
+            </button>
+            <div className="login-divider" />
+            <div className="signup-row">
+              <div className="signup-copy">
+                회원가입하고 BrandPliot의
+                <br></br>
+                <strong> 더 많은 인사이트</strong>를 얻어보세요!
+              </div>
+              <button type="button" className="signup-cta">
+                회원가입
+              </button>
+            </div>
           </form>
         </section>
       </div>
