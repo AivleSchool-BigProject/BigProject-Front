@@ -5,7 +5,7 @@ import makeset from "./login_image/문서초안생성.png"
 import story from "./login_image/스토리텔링.png"
 
 
-export default function LoginApp() {
+export default function LoginApp({ onSignup }) {
   return (
     <div className="login-page navy">
       <div className="login-shell split">
@@ -130,7 +130,7 @@ export default function LoginApp() {
                 <br></br>
                 <strong>더 많은 컨설팅</strong>를 받아보세요!
               </div>
-              <button type="button" className="signup-cta">
+              <button type="button" className="signup-cta" onClick={onSignup}>
                 회원가입
               </button>
             </div>

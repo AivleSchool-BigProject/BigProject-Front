@@ -2,7 +2,7 @@ import { useState, forwardRef } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css"
 
-export default function SignupApp() {
+export default function SignupApp({ onBack }) {
   const [birthDate, setBirthDate] = useState(null);
   return (
     <div className="signup-page">
@@ -67,7 +67,7 @@ export default function SignupApp() {
                 <button type="submit" className="primary">
                     회원가입 하기
                 </button>
-                <button type="button" className="primary">
+                <button type="button" className="primary" onClick={onBack}>
                     돌아가기
                 </button>
             </div>
