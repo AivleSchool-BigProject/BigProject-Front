@@ -1,7 +1,7 @@
-import bannerImage from "../banner_image/Banner.png";
-import Logocon from "../brandcon_image/logocon.png";
-import namecon from "../brandcon_image/namecon.png";
-import pagecon from "../brandcon_image/pagecon.png";
+import bannerImage from "../Image/banner_image/Banner.png";
+import Logocon from "../Image/brandcon_image/logocon.png";
+import namecon from "../Image/brandcon_image/namecon.png";
+import pagecon from "../Image/brandcon_image/pagecon.png";
 
 export default function BrandConsulting({ onBack, onLogout }) {
   return (

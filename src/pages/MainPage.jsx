@@ -1,6 +1,6 @@
-import analyzeCompany from "../main_image/companyanalyze.png";
-import makeset from "../main_image/Brandingconsult.png";
-import story from "../main_image/PromotionalConsulting.png";
+import analyzeCompany from "../Image/main_image/companyanalyze.png";
+import makeset from "../Image/main_image/Brandingconsult.png";
+import story from "../Image/main_image/PromotionalConsulting.png";
 
 export default function MainPage({ onLogout, onBrand }) {
   return (
