@@ -41,9 +41,6 @@ export default function DiagnosisHome({ onLogout }) {
   const handleBrandItem = (action) => {
     setBrandOpen(false);
 
-    // 필요하면 action을 쿼리/파라미터로 넘길 수도 있음:
-    // navigate(`/brandconsulting?tab=${action}`);
-
     navigate("/brandconsulting");
   };
 

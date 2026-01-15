@@ -38,15 +38,19 @@ export default function FindPassword() {
     return onlyNum.length >= 10 && onlyNum.length <= 11;
   }, [phone]);
 
-  const pwValid = useMemo(() => {
+  // ✅ 실시간 비밀번호 규칙 체크 (Signup과 동일하게: 8자 + 대문자 + 숫자 + 특수문자)
+  const pwRules = useMemo(() => {
     const v = newPw;
-    const lenOk = v.length >= 8;
-    const hasUpper = /[A-Z]/.test(v); // ✅ 대문자 포함
-    const hasLower = /[a-z]/.test(v);
-    const hasNum = /\d/.test(v);
-    const hasSpecial = /[^a-zA-Z0-9]/.test(v);
-    return lenOk && hasUpper && hasLower && hasNum && hasSpecial;
+    return {
+      lenOk: v.length >= 8,
+      upperOk: /[A-Z]/.test(v),
+      numOk: /\d/.test(v),
+      specialOk: /[^a-zA-Z0-9]/.test(v),
+    };
   }, [newPw]);
+
+  const pwValid =
+    pwRules.lenOk && pwRules.upperOk && pwRules.numOk && pwRules.specialOk;
 
   const pwMatch = useMemo(
     () => newPw && newPw2 && newPw === newPw2,
@@ -107,7 +111,7 @@ export default function FindPassword() {
 
     if (!pwValid) {
       return setError(
-        "비밀번호는 8자 이상이며 대문자/소문자/숫자/특수문자를 모두 포함해야 합니다."
+        "비밀번호는 8자 이상이며 대문자/숫자/특수문자를 포함해야 합니다."
       );
     }
     if (!pwMatch) return setError("비밀번호 확인이 일치하지 않습니다.");
@@ -281,8 +285,24 @@ export default function FindPassword() {
                 autoComplete="new-password"
               />
               <small className="helper">
-                8자 이상 · 대문자/소문자/숫자/특수문자 포함
+                8자 이상 · 대문자/숫자/특수문자 포함
               </small>
+
+              {/* ✅ 여기! 실시간 규칙 표시 */}
+              <div className="checkline">
+                <span className={`pill ${pwRules.lenOk ? "ok" : ""}`}>
+                  8자+
+                </span>
+                <span className={`pill ${pwRules.upperOk ? "ok" : ""}`}>
+                  대문자
+                </span>
+                <span className={`pill ${pwRules.numOk ? "ok" : ""}`}>
+                  숫자
+                </span>
+                <span className={`pill ${pwRules.specialOk ? "ok" : ""}`}>
+                  특수문자
+                </span>
+              </div>
             </div>
 
             <div className="field">
