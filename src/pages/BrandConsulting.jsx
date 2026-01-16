@@ -234,11 +234,11 @@ export default function BrandConsulting({ onLogout }) {
                 </div>
               </div>
 
-              {pickedSection ? (
+              {/* {pickedSection ? (
                 <div style={{ marginTop: 14, fontSize: 14, opacity: 0.9 }}>
                   선택된 메뉴: <b>{labelMap[pickedSection] ?? pickedSection}</b>
                 </div>
-              ) : null}
+              ) : null} */}
             </div>
           </div>
         </div>

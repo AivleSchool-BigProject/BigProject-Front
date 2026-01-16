@@ -8,10 +8,6 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
-// ✅ 스타일 (프로젝트에 맞게 경로 조정)
-import "../styles/Signup.css";
-import "react-datepicker/dist/react-datepicker.css";
-
 export default function SignupApp() {
   const navigate = useNavigate();
   const [birthDate, setBirthDate] = useState(null);

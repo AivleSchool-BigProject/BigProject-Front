@@ -8,8 +8,6 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
-import "../styles/HomepageConsultingInterview.css";
-
 const STORAGE_KEY = "homepageConsultingInterviewDraft_v1";
 
 export default function HomepageConsultingInterview({ onLogout }) {

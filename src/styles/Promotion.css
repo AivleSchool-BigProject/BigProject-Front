@@ -1,35 +1,51 @@
-/* src/styles/BrandConsulting.css */
+/* src/styles/Promotion.css */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
 
-/* ✅ 전역 body/nav-link 건드리지 말고, 페이지 스코프 안에서만 적용 */
-.brand-page {
-  font-family: "Manrope", "Noto Sans KR", sans-serif;
-  background: #f6f7fb;
+.promo-page {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: #f6f7fb;
 }
 
-/* ✅ Hero */
-.brand-hero {
+.promo-content {
+  padding: 28px 32px 72px;
+  display: grid;
+  gap: 0;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.promo-hero {
   background: #f2f4f9;
   padding: 0;
 }
 
-.brand-hero-inner {
+.promo-hero-inner {
+  max-width: none;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.promo-banner {
+  position: relative;
+  border-radius: 0;
+  overflow: hidden;
+  background: #0f172a;
   width: 100%;
   margin: 0;
 }
 
-/* ✅ Banner */
-.hero-banner {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  background: #0f172a;
-}
-
-.hero-banner::after {
+.promo-banner::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -37,7 +53,7 @@
   z-index: 0;
 }
 
-.hero-banner-image {
+.promo-banner-image {
   width: 100%;
   height: 300px;
   object-fit: cover;
@@ -45,7 +61,7 @@
   display: block;
 }
 
-.hero-banner-text {
+.promo-banner-text {
   position: absolute;
   inset: 0;
   padding: 24px;
@@ -59,8 +75,7 @@
   z-index: 1;
 }
 
-/* ✅ Carousel */
-.hero-carousel {
+.promo-carousel {
   position: relative;
   width: 100%;
   max-width: 720px;
@@ -70,45 +85,45 @@
   place-items: center;
 }
 
-.hero-slide {
+.promo-slide {
   position: absolute;
   left: 50%;
   top: 50%;
   width: 100%;
   opacity: 0;
-  animation: slideFadeX 16s infinite;
+  animation: promo-slide-fade 16s infinite;
   display: grid;
   gap: 6px;
   text-align: center;
 }
 
-.hero-slide strong {
+.promo-slide strong {
   font-size: 40px;
-  font-weight: 800;
+  font-weight: 700;
   display: block;
 }
 
-.hero-slide span {
+.promo-slide span {
   font-size: 25px;
-  font-weight: 300;
+  font-weight: 100;
   color: rgba(255, 255, 255, 0.85);
   display: block;
 }
 
-.hero-slide:nth-child(1) {
+.promo-slide:nth-child(1) {
   animation-delay: 0s;
 }
-.hero-slide:nth-child(2) {
+.promo-slide:nth-child(2) {
   animation-delay: 4s;
 }
-.hero-slide:nth-child(3) {
+.promo-slide:nth-child(3) {
   animation-delay: 8s;
 }
-.hero-slide:nth-child(4) {
+.promo-slide:nth-child(4) {
   animation-delay: 12s;
 }
 
-@keyframes slideFadeX {
+@keyframes promo-slide-fade {
   0% {
     opacity: 0;
     transform: translate(-50%, -50%) translateX(24px);
@@ -125,30 +140,48 @@
   }
 }
 
-/* ✅ Content */
-.brand-content {
+.promo-intro {
   width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 28px 32px 72px;
-  flex: 1;
 }
 
-.section-title {
+.promo-intro h2 {
   margin: 0 0 24px;
   font-size: 16px;
   font-weight: 800;
   color: #0f172a;
 }
 
-/* ✅ Cards */
-.service-grid {
+.promo-section-title {
+  margin: 0 0 24px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.promo-intro p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.promo-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
+  max-width: 1100px;
+  width: 100%;
 }
 
-.service-card {
+.promo-card {
+  /* background: #ffffff;
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid #e5e7ef;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  animation: promo-rise 0.6s ease forwards;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease; */
   background: #fff;
   border-radius: 16px;
   border: 1px solid #e6e9f1;
@@ -160,15 +193,7 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.service-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.1);
-}
-
-.service-image {
-  /* height: 180px;
-  border-radius: 14px;
-  overflow: hidden; */
+.promo-card-image {
   border-radius: 14px;
   overflow: hidden;
   background: #eef2f8;
@@ -176,18 +201,27 @@
   height: 180px;
 }
 
-.service-image img {
+.promo-card-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
   display: block;
+  object-fit: cover;
 }
 
-.service-tag {
+.promo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.1);
+}
+
+.promo-card h3 {
   /* margin: 0;
-  font-size: 12px;
-  color: #4f46e5;
-  font-weight: 700; */
+  font-size: 16px; */
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.promo-card-tag {
   margin: 0;
   font-size: 11px;
   color: #4f46e5;
@@ -195,18 +229,7 @@
   letter-spacing: 0.08em;
 }
 
-.service-card h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.service-meta {
-  /* display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #5b6476; */
+.promo-card-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -216,15 +239,25 @@
   gap: 12px;
 }
 
-@media (max-width: 980px) {
-  .service-grid {
+@keyframes promo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1080px) {
+  .promo-cards {
     grid-template-columns: 1fr;
   }
+}
 
-  .hero-slide strong {
-    font-size: 30px;
-  }
-  .hero-slide span {
-    font-size: 18px;
+@media (max-width: 720px) {
+  .promo-content {
+    padding: 24px 20px 64px;
   }
 }

@@ -1,7 +1,7 @@
 // src/pages/FindID.jsx
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/FindID.css";
+
 import SiteFooter from "../components/SiteFooter.jsx";
 
 export default function FindID() {

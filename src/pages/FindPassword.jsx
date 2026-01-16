@@ -1,7 +1,7 @@
 // src/pages/FindPassword.jsx
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/FindPassword.css";
+
 import SiteFooter from "../components/SiteFooter.jsx";
 
 export default function FindPassword() {

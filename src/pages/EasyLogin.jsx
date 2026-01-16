@@ -1,7 +1,6 @@
 // src/pages/EasyLogin.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/EasyLogin.css";
 
 export default function EasyLogin() {
   const navigate = useNavigate();
