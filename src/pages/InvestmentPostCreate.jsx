@@ -31,7 +31,6 @@ export default function InvestmentPostCreate({ onLogout }) {
     oneLiner: "",
     location: "서울",
     companySize: "스타트업",
-    logoImageUrl: "",
     hashtags: ["", "", "", "", ""],
     website: "",
     contactName: "",
@@ -39,9 +38,10 @@ export default function InvestmentPostCreate({ onLogout }) {
     summary: "",
   });
   const [errors, setErrors] = useState({
-    logoImageUrl: "",
     website: "",
   });
+  const [logoFileName, setLogoFileName] = useState("");
+  const [logoPreview, setLogoPreview] = useState("");
   const [draftPromptOpen, setDraftPromptOpen] = useState(false);
   const [draftCandidate, setDraftCandidate] = useState(null);
 
@@ -64,21 +64,36 @@ export default function InvestmentPostCreate({ onLogout }) {
   }, [form.hashtags]);
 
   const previewLogo = (form.company || "회사").slice(0, 2).toUpperCase();
-  const logoSrc = form.logoImageUrl;
+  const logoSrc = logoPreview;
+
+  const handleLogoChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setLogoFileName("");
+      setLogoPreview("");
+      return;
+    }
+
+    setLogoFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoPreview(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     const nextErrors = {
-      logoImageUrl: validateUrl(form.logoImageUrl),
       website: validateUrl(form.website),
     };
     setErrors(nextErrors);
-    if (nextErrors.logoImageUrl || nextErrors.website) return;
+    if (nextErrors.website) return;
     const payload = {
       id: `local-${Date.now()}`,
       company: form.company,
       oneLiner: form.oneLiner,
-      logoImageUrl: form.logoImageUrl,
+      logoImageUrl: logoPreview,
       hashtags: form.hashtags,
       location: form.location,
       companySize: form.companySize,
@@ -104,7 +119,10 @@ export default function InvestmentPostCreate({ onLogout }) {
 
   const handleDraftSave = () => {
     try {
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(form));
+      localStorage.setItem(
+        DRAFT_STORAGE_KEY,
+        JSON.stringify({ ...form, logoImageUrl: logoPreview })
+      );
       alert("임시 저장되었습니다.");
     } catch (error) {
       console.error(error);
@@ -120,6 +138,8 @@ export default function InvestmentPostCreate({ onLogout }) {
         ? [...draft.hashtags, "", "", "", "", ""].slice(0, 5)
         : prev.hashtags,
     }));
+    setLogoPreview(draft?.logoImageUrl || "");
+    setLogoFileName("");
   };
 
   const handleDraftLoad = () => {
@@ -240,17 +260,17 @@ export default function InvestmentPostCreate({ onLogout }) {
 
             <div className="invest-form-row">
               <label className="invest-form-label">
-                로고 이미지 URL
+                로고 이미지 업로드
                 <input
-                  type="url"
-                  value={form.logoImageUrl}
-                  onChange={updateField("logoImageUrl")}
-                  onBlur={handleUrlBlur("logoImageUrl")}
-                  placeholder="https://"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
                 />
               </label>
-              {errors.logoImageUrl ? (
-                <div className="invest-form-error">{errors.logoImageUrl}</div>
+              {logoFileName ? (
+                <div className="invest-form-helper">
+                  선택된 파일: {logoFileName}
+                </div>
               ) : null}
             </div>
 
