@@ -1,15 +1,23 @@
-// src/pages/InvestmentPostEdit.jsx
+﻿// src/pages/InvestmentPostEdit.jsx
 // 2026-01-20
 // 게시글 수정 페이지 구현
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
+import { apiRequest } from "../api/client.js";
 
-const LOCATION_OPTIONS = ["서울", "경기", "인천", "대전", "대구", "부산", "광주"];
+const LOCATION_OPTIONS = [
+  "수도권",
+  "강원도",
+  "충남/충북",
+  "경남/경북",
+  "전남/전북",
+  "제주",
+];
 const COMPANY_SIZE_OPTIONS = [
   "예비 창업 / 개인",
   "스타트업",
@@ -17,8 +25,6 @@ const COMPANY_SIZE_OPTIONS = [
   "중견기업",
   "대기업",
 ];
-const POSTS_STORAGE_KEY = "investmentPosts";
-
 export default function InvestmentPostEdit({ onLogout }) {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -29,8 +35,9 @@ export default function InvestmentPostEdit({ onLogout }) {
   const [form, setForm] = useState({
     company: "",
     oneLiner: "",
-    location: "서울",
-    companySize: "스타트업",
+    locations: [],
+    detailAddress: "",
+    companySizes: [],
     logoImageUrl: "",
     hashtags: ["", "", "", "", ""],
     website: "",
@@ -39,11 +46,16 @@ export default function InvestmentPostEdit({ onLogout }) {
     summary: "",
   });
   const [errors, setErrors] = useState({
-    logoImageUrl: "",
     website: "",
   });
-  const [loaded, setLoaded] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [logoFileName, setLogoFileName] = useState("");
+  const [logoPreview, setLogoPreview] = useState("");
+  const [logoFile, setLogoFile] = useState(null);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [sizeOpen, setSizeOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const updateField = (key) => (event) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
@@ -65,90 +77,156 @@ export default function InvestmentPostEdit({ onLogout }) {
   }, [form.hashtags]);
 
   const previewLogo = (form.company || "회사").slice(0, 2).toUpperCase();
-  const logoSrc = form.logoImageUrl;
+  const logoSrc = logoPreview || form.logoImageUrl;
 
-  const loadPost = () => {
-    if (loaded) return;
-    setLoaded(true);
-    try {
-      const saved = localStorage.getItem(POSTS_STORAGE_KEY);
-      const list = saved ? JSON.parse(saved) : [];
-      const item = Array.isArray(list) ? list.find((p) => p.id === id) : null;
-      if (!item) {
-        setNotFound(true);
-        return;
-      }
-      setForm((prev) => ({
-        ...prev,
-        company: item.company || "",
-        oneLiner: item.oneLiner || "",
-        location: item.location || "서울",
-        companySize: item.companySize || "스타트업",
-        logoImageUrl: item.logoImageUrl || "",
-        hashtags: Array.isArray(item.hashtags)
-          ? [...item.hashtags, "", "", "", "", ""].slice(0, 5)
-          : prev.hashtags,
-        website: item.website || "",
-        contactName: item.contactName || "",
-        contactEmail: item.contactEmail || "",
-        summary: item.summary || "",
-      }));
-    } catch (error) {
-      console.error(error);
-      setNotFound(true);
+  const handleLogoChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setLogoFileName("");
+      setLogoPreview("");
+      setLogoFile(null);
+      return;
     }
+
+    setLogoFileName(file.name);
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoPreview(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.readAsDataURL(file);
   };
 
-  if (!loaded) loadPost();
+  const toggleLocation = (value) => {
+    setForm((prev) => {
+      const exists = prev.locations.includes(value);
+      const nextLocations = exists
+        ? prev.locations.filter((loc) => loc !== value)
+        : [...prev.locations, value];
+      return { ...prev, locations: nextLocations };
+    });
+  };
 
-  const handleSubmit = (event) => {
+  const removeLocation = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      locations: prev.locations.filter((loc) => loc !== value),
+    }));
+  };
+
+  const toggleCompanySize = (value) => {
+    setForm((prev) => {
+      const exists = prev.companySizes.includes(value);
+      const nextSizes = exists
+        ? prev.companySizes.filter((size) => size !== value)
+        : [...prev.companySizes, value];
+      return { ...prev, companySizes: nextSizes };
+    });
+  };
+
+  const removeCompanySize = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      companySizes: prev.companySizes.filter((size) => size !== value),
+    }));
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchPost = async () => {
+      setLoading(true);
+      setNotFound(false);
+      try {
+        const data = await apiRequest(`/brands/posts/${id}`);
+        if (!data) {
+          if (mounted) setNotFound(true);
+          return;
+        }
+        if (!mounted) return;
+        setForm((prev) => ({
+          ...prev,
+          company: data.companyName || "",
+          oneLiner: data.shortDescription || "",
+          locations: data.region ? [data.region] : [],
+          detailAddress: "",
+          companySizes: data.companySize ? [data.companySize] : [],
+          logoImageUrl: data.logoImageUrl || "",
+          hashtags: Array.isArray(data.hashtags)
+            ? [...data.hashtags, "", "", "", "", ""].slice(0, 5)
+            : prev.hashtags,
+          website: "",
+          contactName: data.contactName || "",
+          contactEmail: data.contactEmail || "",
+          summary: data.companyDescription || "",
+        }));
+        setLogoPreview(data.logoImageUrl || "");
+      } catch (error) {
+        console.error(error);
+        if (mounted) setNotFound(true);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchPost();
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const nextErrors = {
-      logoImageUrl: validateUrl(form.logoImageUrl),
       website: validateUrl(form.website),
     };
     setErrors(nextErrors);
-    if (nextErrors.logoImageUrl || nextErrors.website) return;
+    if (nextErrors.website) return;
+    setSubmitError("");
+    setLoading(true);
+
+    const payload = {
+      companyName: form.company.trim(),
+      shortDescription: form.oneLiner.trim(),
+      region: form.locations[0] || "",
+      contactName: form.contactName.trim(),
+      contactEmail: form.contactEmail.trim(),
+      companyDescription: form.summary.trim(),
+      companySize: form.companySizes[0] || "",
+      hashtag1: form.hashtags[0] || "",
+      hashtag2: form.hashtags[1] || "",
+      hashtag3: form.hashtags[2] || "",
+      hashtag4: form.hashtags[3] || "",
+      hashtag5: form.hashtags[4] || "",
+    };
+
+    const formData = new FormData();
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(payload)], { type: "application/json" })
+    );
+    if (logoFile) formData.append("image", logoFile);
 
     try {
-      const saved = localStorage.getItem(POSTS_STORAGE_KEY);
-      const list = saved ? JSON.parse(saved) : [];
-      if (!Array.isArray(list)) return;
-      const nextList = list.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              company: form.company,
-              oneLiner: form.oneLiner,
-              logoImageUrl: form.logoImageUrl,
-              hashtags: form.hashtags,
-              location: form.location,
-              companySize: form.companySize,
-              website: form.website,
-              contactName: form.contactName,
-              contactEmail: form.contactEmail,
-              summary: form.summary,
-              updatedAt: new Date().toISOString().slice(0, 10),
-            }
-          : item
-      );
-      localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(nextList));
+      await apiRequest(`/brands/posts/${id}`, {
+        method: "PUT",
+        data: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      navigate("/investment");
     } catch (error) {
       console.error(error);
+      setSubmitError("게시글 수정에 실패했습니다.");
+    } finally {
+      setLoading(false);
     }
-
-    navigate("/investment");
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const ok = window.confirm("정말 삭제하시겠습니까?");
     if (!ok) return;
     try {
-      const saved = localStorage.getItem(POSTS_STORAGE_KEY);
-      const list = saved ? JSON.parse(saved) : [];
-      if (!Array.isArray(list)) return;
-      const nextList = list.filter((item) => item.id !== id);
-      localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(nextList));
+      await apiRequest(`/brands/posts/${id}`, { method: "DELETE" });
     } catch (error) {
       console.error(error);
     }
@@ -191,13 +269,14 @@ export default function InvestmentPostEdit({ onLogout }) {
             >
               목록으로
             </button>
-            <button type="button" className="btn primary">
-              미리보기
-            </button>
           </div>
         </section>
 
-        {notFound ? (
+        {loading ? (
+          <section className="invest-create-card">
+            <p>불러오는 중...</p>
+          </section>
+        ) : notFound ? (
           <section className="invest-create-card">
             <p>수정할 게시글을 찾을 수 없습니다.</p>
             <div className="invest-form-actions">
@@ -239,50 +318,142 @@ export default function InvestmentPostEdit({ onLogout }) {
                 </label>
               </div>
 
-              <div className="invest-form-row">
-                <label className="invest-form-label">
-                  로고 이미지 URL
-                  <input
-                    type="url"
-                    value={form.logoImageUrl}
-                    onChange={updateField("logoImageUrl")}
-                    onBlur={handleUrlBlur("logoImageUrl")}
-                    placeholder="https://"
-                  />
-                </label>
-                {errors.logoImageUrl ? (
-                  <div className="invest-form-error">{errors.logoImageUrl}</div>
-                ) : null}
-              </div>
+            <div className="invest-form-row">
+              <label className="invest-form-label">
+                로고 이미지 업로드
+                <input type="file" accept="image/*" onChange={handleLogoChange} />
+              </label>
+              {logoFileName ? (
+                <div className="invest-form-helper">선택된 파일: {logoFileName}</div>
+              ) : logoSrc ? (
+                <div className="invest-form-helper">현재 로고가 등록되어 있습니다.</div>
+              ) : null}
+            </div>
 
-              <div className="invest-form-row two-col">
-                <label className="invest-form-label">
-                  지역
-                  <select
-                    value={form.location}
-                    onChange={updateField("location")}
+            <div className="invest-form-row two-col">
+              <label className="invest-form-label">
+                지역
+                <div className="invest-location-select">
+                  <button
+                    type="button"
+                    className="invest-location-control"
+                    onClick={() => setLocationOpen((prev) => !prev)}
+                    aria-expanded={locationOpen ? "true" : "false"}
                   >
-                    {LOCATION_OPTIONS.map((loc) => (
-                      <option key={loc} value={loc}>
-                        {loc}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="invest-form-label">
-                  회사 규모
-                  <select
-                    value={form.companySize}
-                    onChange={updateField("companySize")}
+                    <div className="invest-location-chips">
+                      {form.locations.length === 0 ? (
+                        <span className="placeholder">지역을 선택하세요</span>
+                      ) : (
+                        form.locations.map((loc) => (
+                          <span key={loc} className="invest-location-chip">
+                            {loc}
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removeLocation(loc);
+                              }}
+                              aria-label={`${loc} 제거`}
+                            >
+                              x
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <span className={`chev ${locationOpen ? "is-open" : ""}`}>
+                      ▾
+                    </span>
+                  </button>
+                  {locationOpen ? (
+                    <div className="invest-location-panel">
+                      {LOCATION_OPTIONS.map((loc) => {
+                        const selected = form.locations.includes(loc);
+                        return (
+                          <button
+                            key={loc}
+                            type="button"
+                            className={`invest-location-option ${
+                              selected ? "is-selected" : ""
+                            }`}
+                            onClick={() => toggleLocation(loc)}
+                          >
+                            {loc}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              </label>
+              <label className="invest-form-label">
+                상세 주소
+                <input
+                  type="text"
+                  value={form.detailAddress}
+                  onChange={updateField("detailAddress")}
+                  placeholder="상세 주소를 입력하세요"
+                />
+              </label>
+            </div>
+
+            <div className="invest-form-row">
+              <label className="invest-form-label">
+                회사 규모
+                <div className="invest-location-select">
+                  <button
+                    type="button"
+                    className="invest-location-control"
+                    onClick={() => setSizeOpen((prev) => !prev)}
+                    aria-expanded={sizeOpen ? "true" : "false"}
                   >
-                    {COMPANY_SIZE_OPTIONS.map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+                    <div className="invest-location-chips">
+                      {form.companySizes.length === 0 ? (
+                        <span className="placeholder">회사 규모를 선택하세요</span>
+                      ) : (
+                        form.companySizes.map((size) => (
+                          <span key={size} className="invest-location-chip">
+                            {size}
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removeCompanySize(size);
+                              }}
+                              aria-label={`${size} 제거`}
+                            >
+                              x
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <span className={`chev ${sizeOpen ? "is-open" : ""}`}>
+                      ▾
+                    </span>
+                  </button>
+                  {sizeOpen ? (
+                    <div className="invest-location-panel">
+                      {COMPANY_SIZE_OPTIONS.map((size) => {
+                        const selected = form.companySizes.includes(size);
+                        return (
+                          <button
+                            key={size}
+                            type="button"
+                            className={`invest-location-option ${
+                              selected ? "is-selected" : ""
+                            }`}
+                            onClick={() => toggleCompanySize(size)}
+                          >
+                            {size}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              </label>
+            </div>
 
               <div className="invest-form-row">
                 <label className="invest-form-label">
@@ -358,10 +529,13 @@ export default function InvestmentPostEdit({ onLogout }) {
                 <button type="button" className="btn ghost" onClick={handleDelete}>
                   삭제
                 </button>
-                <button type="submit" className="btn primary">
+                <button type="submit" className="btn primary" disabled={loading}>
                   수정 저장
                 </button>
               </div>
+              {submitError ? (
+                <div className="invest-form-error">{submitError}</div>
+              ) : null}
             </form>
 
             <aside className="invest-create-side">
@@ -390,8 +564,15 @@ export default function InvestmentPostEdit({ onLogout }) {
                 </div>
                 <div className="invest-preview-bottom">
                   <div className="invest-preview-meta">
-                    <div className="invest-preview-status">
-                      {[form.location, form.companySize]
+                <div className="invest-preview-status">
+                      {[
+                        form.locations.length
+                          ? form.locations.join(", ")
+                          : "지역 미선택",
+                        form.companySizes.length
+                          ? form.companySizes.join(", ")
+                          : "회사 규모 미선택",
+                      ]
                         .filter(Boolean)
                         .join(", ")}
                     </div>
@@ -413,3 +594,9 @@ export default function InvestmentPostEdit({ onLogout }) {
     </div>
   );
 }
+
+
+
+
+
+

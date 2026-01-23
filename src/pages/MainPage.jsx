@@ -1,5 +1,5 @@
-// src/pages/MainPage.jsx
-import React, { useState } from "react";
+﻿// src/pages/MainPage.jsx
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import analyzeCompany from "../Image/main_image/companyanalyze.png";
@@ -11,15 +11,51 @@ import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 import SiteHeader from "../components/SiteHeader.jsx";
 
+const POSTS_STORAGE_KEY = "investmentPosts";
+
 export default function MainPage({ onLogout }) {
   const navigate = useNavigate();
 
   const handleDiagnosisClick = () => navigate("/diagnosis");
   const handleBrandPage = () => navigate("/brandconsulting");
 
-  // ✅ 약관/방침 모달
+  // 정책 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
+
+  const dealItems = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(POSTS_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.slice(0, 6).map((item, index) => {
+        const tags = Array.isArray(item.hashtags)
+          ? item.hashtags.map((tag) => tag.trim()).filter(Boolean)
+          : [];
+        const company = item.company || "회사명";
+        const locationText = Array.isArray(item.locations)
+          ? item.locations.join(", ")
+          : item.location || "";
+        const sizeText = Array.isArray(item.companySizes)
+          ? item.companySizes.join(", ")
+          : item.companySize || "";
+        const meta = [sizeText, locationText].filter(Boolean).join(", ");
+        return {
+          id: item.id || `local-${index}`,
+          company,
+          oneLiner: item.oneLiner || "",
+          meta,
+          tags,
+          logoImageUrl: item.logoImageUrl || "",
+          updatedAt: item.updatedAt || "-",
+        };
+      });
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  }, []);
 
   return (
     <div className="main-page">
@@ -31,21 +67,16 @@ export default function MainPage({ onLogout }) {
         <PrivacyContent />
       </PolicyModal>
 
-      <PolicyModal
-        open={openType === "terms"}
-        title="이용약관"
-        onClose={closeModal}
-      >
+      <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
         <TermsContent />
       </PolicyModal>
 
-      {/* ✅ 공통 헤더 사용 */}
       <SiteHeader
         onLogout={onLogout}
         onBrandPick={(action) => {
-          // MainPage에서 드롭다운 선택 시 section 전달은 헤더에서 이미 처리함
-          // 여기서는 추가로 뭔가 하고 싶을 때만 작성
-          // 예: console.log("brand pick:", action);
+          if (action === "logo") navigate("/logoconsulting");
+          if (action === "naming") navigate("/namingconsulting");
+          if (action === "homepage") navigate("/homepageconsulting");
         }}
       />
 
@@ -111,17 +142,17 @@ export default function MainPage({ onLogout }) {
               <p className="card-tag">Promotional Consulting</p>
               <h3>홍보물 컨설팅</h3>
               <p className="card-desc">
-                기업 전반의 소개와 홍보 과정을 기획 단계부터 제안합니다.
+                기업 전반의 소개와 홍보 과정을 기획하고 제안합니다.
               </p>
             </div>
           </article>
         </div>
 
-        <section className="deal-board" aria-label="투자 유치 게시판">
+        <section className="deal-board" aria-label="투자 라운지 요약">
           <div className="deal-header">
             <div>
-              <p className="deal-eyebrow">초기 스타트업과 함께 해주세요!</p>
-              <h3 className="deal-title">스타트업 투자유치</h3>
+              <p className="deal-eyebrow">브랜딩과 성장을 준비하는 기업을 한곳에서 만나보세요.</p>
+              <h3 className="deal-title">투자 라운지</h3>
             </div>
 
             <button
@@ -134,131 +165,54 @@ export default function MainPage({ onLogout }) {
           </div>
 
           <div className="deal-grid">
-            <article className="deal-card">
-              <div className="deal-card-head">
+            {dealItems.length === 0 ? (
+              <div className="deal-card">
                 <div>
-                  <h4>셀타스퀘어</h4>
-                  <p>AI 전구약알림 서비스, AI CRO</p>
-                  <p>Pre A, TIPS, Series A 투자 완료</p>
+                  <h4>등록된 기업이 없습니다.</h4>
+                  <p>투자 라운지에서 첫 게시글을 등록해 주세요.</p>
                 </div>
-                <div className="deal-logo">SELTA</div>
               </div>
-              <div className="deal-tags">
-                <span>AI헬스</span>
-                <span>포켓투자유치 A,B 받은팀</span>
-              </div>
-              <div className="deal-footer">
-                <strong>[series A] 92억+ TIPS 투자유치</strong>
-                <button type="button" onClick={() => alert("뉴스 (테스트)")}>
-                  투자성과 뉴스
-                </button>
-              </div>
-            </article>
-
-            <article className="deal-card">
-              <div className="deal-card-head">
-                <div>
-                  <h4>링크플로우</h4>
-                  <p>인공지능(AI) 웨어러블 전문 링크플로우</p>
-                  <p>Series B 라운드 준비 완료</p>
-                </div>
-                <div className="deal-logo">LINK</div>
-              </div>
-              <div className="deal-tags">
-                <span>AI,웨어러블</span>
-                <span>포켓투자유치 A,B 받은팀</span>
-              </div>
-              <div className="deal-footer">
-                <strong>[series C 이상] 409억 투자유치</strong>
-                <button type="button" onClick={() => alert("뉴스 (테스트)")}>
-                  투자성과 뉴스
-                </button>
-              </div>
-            </article>
-
-            <article className="deal-card">
-              <div className="deal-card-head">
-                <div>
-                  <h4>빔웍스</h4>
-                  <p>초음파 AI 진단 센서 기반 고가치</p>
-                  <p>서비스/임상기업 운영, Pre-IPO 완료</p>
-                </div>
-                <div className="deal-logo">BEAM</div>
-              </div>
-              <div className="deal-tags">
-                <span>헬스케어, AI</span>
-                <span>포켓투자유치 A,B 받은팀</span>
-              </div>
-              <div className="deal-footer">
-                <strong>[pre-IPO] 170억 투자완료</strong>
-                <button type="button" onClick={() => alert("뉴스 (테스트)")}>
-                  투자성과 뉴스
-                </button>
-              </div>
-            </article>
-
-            <article className="deal-card">
-              <div className="deal-card-head">
-                <div>
-                  <h4>노바리프</h4>
-                  <p>친환경 소재 기반 패키징 솔루션</p>
-                  <p>Seed, Pre A 투자 유치</p>
-                </div>
-                <div className="deal-logo">NOVA</div>
-              </div>
-              <div className="deal-tags">
-                <span>그린테크</span>
-                <span>제조혁신</span>
-              </div>
-              <div className="deal-footer">
-                <strong>[seed] 18억 투자완료</strong>
-                <button type="button" onClick={() => alert("뉴스 (테스트)")}>
-                  투자성과 뉴스
-                </button>
-              </div>
-            </article>
-
-            <article className="deal-card">
-              <div className="deal-card-head">
-                <div>
-                  <h4>바이오루프</h4>
-                  <p>정밀 건강관리 바이오 데이터 플랫폼</p>
-                  <p>Series A 라운드 진행 중</p>
-                </div>
-                <div className="deal-logo">BIO</div>
-              </div>
-              <div className="deal-tags">
-                <span>바이오</span>
-                <span>데이터</span>
-              </div>
-              <div className="deal-footer">
-                <strong>[series A] 65억 투자유치</strong>
-                <button type="button" onClick={() => alert("뉴스 (테스트)")}>
-                  투자성과 뉴스
-                </button>
-              </div>
-            </article>
-
-            <article className="deal-card">
-              <div className="deal-card-head">
-                <div>
-                  <h4>클라우드웨이브</h4>
-                  <p>제조 특화 SaaS 운영 자동화</p>
-                  <p>Series B 투자 유치 확정</p>
-                </div>
-                <div className="deal-logo">CW</div>
-              </div>
-              <div className="deal-tags">
-                <span>SaaS</span>
-                <span>제조</span>
-              </div>
-              <div className="deal-footer">
-                <strong>[series B] 210억 투자완료</strong>
-                <button type="button" onClick={() => alert("뉴스 (테스트)")}>
-                  투자성과 뉴스
-                </button>
-              </div>
-            </article>
+            ) : (
+              dealItems.map((item) => (
+                <article
+                  key={item.id}
+                  className="deal-card"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/investment/${item.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      navigate(`/investment/${item.id}`);
+                  }}
+                >
+                  <div className="deal-card-head">
+                    <div>
+                      <h4>{item.company}</h4>
+                      <p>{item.oneLiner || "한 줄 소개가 없습니다."}</p>
+                      <p className="deal-meta">{item.meta || "지역/규모 정보 없음"}</p>
+                    </div>
+                    <div className="deal-logo">
+                      {item.logoImageUrl ? (
+                        <img src={item.logoImageUrl} alt={`${item.company} 로고`} />
+                      ) : (
+                        item.company.slice(0, 2)
+                      )}
+                    </div>
+                  </div>
+                  <div className="deal-tags">
+                    {item.tags.length === 0 ? (
+                      <span>태그 없음</span>
+                    ) : (
+                      item.tags.map((tag) => <span key={tag}>#{tag}</span>)
+                    )}
+                  </div>
+                  <div className="deal-footer">
+                    <strong>업데이트: {item.updatedAt}</strong>
+                    <button type="button">↗</button>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </section>
       </main>

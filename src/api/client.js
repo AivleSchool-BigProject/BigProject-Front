@@ -1,19 +1,33 @@
-import axios from "axios";
+﻿import axios from "axios";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, "") || "";
 
 const TOKEN_KEY = "accessToken";
 
-export const getAccessToken = () => localStorage.getItem(TOKEN_KEY);
+export const getAccessToken = () => {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+};
 
 export const setAccessToken = (token) => {
   if (!token) return;
-  localStorage.setItem(TOKEN_KEY, token);
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    return;
+  }
 };
 
 export const clearAccessToken = () => {
-  localStorage.removeItem(TOKEN_KEY);
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    return;
+  }
 };
 
 export const apiClient = axios.create({

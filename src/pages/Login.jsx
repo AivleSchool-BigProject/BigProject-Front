@@ -14,6 +14,7 @@ import EasyLoginModal from "../components/EasyLoginModal.jsx";
 // 2025-01-19
 // API 클라이언트 import 추가
 import { apiRequest, setAccessToken } from "../api/client.js";
+import { setCurrentUserId, setIsLoggedIn } from "../api/auth.js";
 
 export default function LoginApp() {
   const navigate = useNavigate();
@@ -53,8 +54,15 @@ export default function LoginApp() {
           password: password,
         },
       });
-      const token = data?.accessToken || data?.token;
+      const token =
+        data?.accessToken ||
+        data?.token ||
+        data?.access_token ||
+        data?.jwt ||
+        data?.jwtToken;
       if (token) setAccessToken(token);
+      setCurrentUserId(data?.userId || data?.loginId || loginId.trim());
+      setIsLoggedIn(true);
       navigate("/main");
     } catch {
       setError("로그인에 실패했습니다.");

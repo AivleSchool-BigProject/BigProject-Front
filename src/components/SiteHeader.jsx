@@ -2,9 +2,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/SiteHeader.css";
-// 2026-01-19
-// 토큰 import
-import { clearAccessToken } from "../api/client.js";
+import { apiRequest, clearAccessToken } from "../api/client.js";
+import { clearCurrentUserId, clearIsLoggedIn } from "../api/auth.js";
 
 export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
   const navigate = useNavigate();
@@ -152,13 +151,18 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
   };
 
   // ✅ 로그아웃 confirm + 0.5초 후 이동
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const ok = window.confirm("로그아웃 하시겠습니까?");
     if (!ok) return;
 
-    // 2026-01-19
-    // 로그아웃 시 프론트 토큰 삭제, 로그인 이동
+    try {
+      await apiRequest("/auth/logout", { method: "POST" });
+    } catch (error) {
+      console.error(error);
+    }
     clearAccessToken();
+    clearCurrentUserId();
+    clearIsLoggedIn();
     if (typeof onLogout === "function") onLogout();
     else navigate("/login");
   };

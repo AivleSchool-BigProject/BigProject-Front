@@ -1,5 +1,5 @@
-// src/pages/InvestmentBoard.jsx
-import React, { useMemo, useState } from "react";
+﻿// src/pages/InvestmentBoard.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
@@ -7,144 +7,95 @@ import SiteFooter from "../components/SiteFooter.jsx";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
-
-const POSTS_STORAGE_KEY = "investmentPosts";
+import { apiRequest } from "../api/client.js";
+import { getCurrentUserId } from "../api/auth.js";
 
 export default function InvestmentBoard({ onLogout }) {
   const navigate = useNavigate();
 
-  // ✅ 약관/방침 모달
+  // 정책 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
-  // ✅ 검색/필터
+  // 검색/필터
   const [q, setQ] = useState("");
-  const [stage, setStage] = useState("all");
+  const [region, setRegion] = useState("all");
+  const [size, setSize] = useState("all");
   const [sort, setSort] = useState("popular"); // popular | newest
 
-  // ✅ 더미 데이터 (나중에 API로 교체)
-  const items = useMemo(
-    () => [
-      {
-        id: "seltasq",
-        name: "셀타스퀘어",
-        oneLiner: "AI 전구약 알림 서비스 · AI CRO",
-        stage: "Series A",
-        location: "서울",
-        tags: ["AI헬스", "B2C"],
-        amount: "92억+ TIPS",
-        status: "투자 완료",
-        popularity: 98,
-        updatedAt: "2026-01-10",
-      },
-      {
-        id: "linkflow",
-        name: "링크플로우",
-        oneLiner: "인공지능(AI) 웨어러블 전문",
-        stage: "Series B",
-        location: "경기",
-        tags: ["AI", "웨어러블"],
-        amount: "409억",
-        status: "라운드 준비",
-        popularity: 91,
-        updatedAt: "2026-01-12",
-      },
-      {
-        id: "beamworks",
-        name: "빔웍스",
-        oneLiner: "초음파 AI 진단 센서 기반 헬스케어",
-        stage: "Pre-IPO",
-        location: "대전",
-        tags: ["헬스케어", "AI"],
-        amount: "170억",
-        status: "투자 완료",
-        popularity: 86,
-        updatedAt: "2026-01-08",
-      },
-      {
-        id: "novaleaf",
-        name: "노바리프",
-        oneLiner: "친환경 소재 기반 패키징 솔루션",
-        stage: "Seed",
-        location: "부산",
-        tags: ["그린테크", "제조혁신"],
-        amount: "18억",
-        status: "투자 완료",
-        popularity: 77,
-        updatedAt: "2026-01-05",
-      },
-      {
-        id: "bioloop",
-        name: "바이오루프",
-        oneLiner: "정밀 건강관리 바이오 데이터 플랫폼",
-        stage: "Series A",
-        location: "서울",
-        tags: ["바이오", "데이터"],
-        amount: "65억",
-        status: "진행 중",
-        popularity: 82,
-        updatedAt: "2026-01-14",
-      },
-      {
-        id: "cloudwave",
-        name: "클라우드웨이브",
-        oneLiner: "제조 특화 SaaS 운영 자동화",
-        stage: "Series B",
-        location: "대구",
-        tags: ["SaaS", "제조"],
-        amount: "210억",
-        status: "투자 완료",
-        popularity: 79,
-        updatedAt: "2026-01-03",
-      },
-    ],
-    []
-  );
-  
-  const savedItems = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(POSTS_STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.map((item, index) => ({
-        id: item.id || `local-${index}`,
-        name: item.company || "회사명",
-        oneLiner: item.oneLiner || "",
-        logoImageUrl: item.logoImageUrl || "",
-        tags: Array.isArray(item.hashtags)
-          ? item.hashtags.map((tag) => tag.trim()).filter(Boolean)
-          : [],
-        location: item.location || "",
-        companySize: item.companySize || "",
-        popularity: 0,
-        updatedAt: item.updatedAt || "2026-01-01",
-        kind: "preview",
-      }));
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
-  }, []);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const currentUserId = getCurrentUserId();
 
-  const combinedItems = useMemo(
-    () => [...savedItems, ...items],
-    [items, savedItems]
-  );
+  useEffect(() => {
+    let mounted = true;
+    const fetchPosts = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const data = await apiRequest("/brands/posts");
+        const list = Array.isArray(data) ? data : [];
+        const mapped = list.map((item) => ({
+          id: item.postId,
+          name: item.companyName || "회사명",
+          oneLiner: item.shortDescription || "",
+          logoImageUrl: item.logoImageUrl || "",
+          tags: Array.isArray(item.hashtags)
+            ? item.hashtags.map((tag) => tag.trim()).filter(Boolean)
+            : [],
+          authorId:
+            item.userId ??
+            item.authorId ??
+            item.memberId ??
+            item.loginId ??
+            item.createdBy ??
+            null,
+          locations: item.region ? [item.region] : [],
+          companySizes: item.companySize ? [item.companySize] : [],
+          popularity: 0,
+          updatedAt: item.updatedAt
+            ? item.updatedAt.slice(0, 10)
+            : "2026-01-01",
+          kind: "preview",
+        }));
+        if (mounted) setItems(mapped);
+      } catch (err) {
+        console.error(err);
+        if (mounted) setError("게시글 목록을 불러오지 못했습니다.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchPosts();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     const keyword = q.trim().toLowerCase();
 
-    let out = combinedItems.filter((it) => {
+    let out = items.filter((it) => {
       const hit =
         !keyword ||
         it.name.toLowerCase().includes(keyword) ||
         it.oneLiner.toLowerCase().includes(keyword) ||
         it.tags.join(" ").toLowerCase().includes(keyword);
 
-      const stageOk =
-        stage === "all" ? true : it.kind === "preview" ? false : it.stage === stage;
-      return hit && stageOk;
+      const regionOk =
+        region === "all"
+          ? true
+          : Array.isArray(it.locations)
+            ? it.locations.includes(region)
+            : it.location === region;
+      const sizeOk =
+        size === "all"
+          ? true
+          : Array.isArray(it.companySizes)
+            ? it.companySizes.includes(size)
+            : it.companySize === size;
+      return hit && regionOk && sizeOk;
     });
 
     if (sort === "newest") {
@@ -154,20 +105,30 @@ export default function InvestmentBoard({ onLogout }) {
     }
 
     return out;
-  }, [combinedItems, q, stage, sort]);
+  }, [items, q, region, size, sort]);
 
-  const stageOptions = [
+  const locationOptions = [
     "all",
-    "Seed",
-    "Pre A",
-    "Series A",
-    "Series B",
-    "Pre-IPO",
+    "수도권",
+    "강원도",
+    "충남/충북",
+    "경남/경북",
+    "전남/전북",
+    "제주",
+  ];
+
+  const companySizeOptions = [
+    "all",
+    "예비 창업 / 개인",
+    "스타트업",
+    "중소기업",
+    "중견기업",
+    "대기업",
   ];
 
   return (
     <div className="invest-page">
-      {/* ✅ 약관/방침 모달 */}
+      {/* 정책 모달 */}
       <PolicyModal
         open={openType === "privacy"}
         title="개인정보 처리방침"
@@ -192,8 +153,7 @@ export default function InvestmentBoard({ onLogout }) {
             <div>
               <h1 className="invest-title">투자 라운지</h1>
               <p className="invest-sub">
-                스타트업 투자유치/성과 정보를 한곳에서 확인하세요. (현재는 더미
-                데이터)
+                투자자와 기업을 연결하는 기업 홍보 공간입니다.
               </p>
             </div>
 
@@ -221,19 +181,19 @@ export default function InvestmentBoard({ onLogout }) {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="회사명/키워드/태그로 검색"
-                aria-label="투자유치 게시판 검색"
+                aria-label="투자유치 게시글 검색"
               />
             </div>
 
             <div className="invest-controls">
               <select
-                value={stage}
-                onChange={(e) => setStage(e.target.value)}
-                aria-label="단계 필터"
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                aria-label="지역 필터"
               >
-                {stageOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s === "all" ? "전체 단계" : s}
+                {locationOptions.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc === "all" ? "전체 지역" : loc}
                   </option>
                 ))}
               </select>
@@ -250,26 +210,45 @@ export default function InvestmentBoard({ onLogout }) {
           </div>
 
           <div className="invest-chips">
-            {stageOptions.map((s) => (
+            {companySizeOptions.map((value) => (
               <button
-                key={s}
+                key={value}
                 type="button"
-                className={`chip ${stage === s ? "is-active" : ""}`}
-                onClick={() => setStage(s)}
+                className={`chip ${size === value ? "is-active" : ""}`}
+                onClick={() => setSize(value)}
               >
-                {s === "all" ? "전체" : s}
+                {value === "all" ? "전체" : value}
               </button>
             ))}
           </div>
         </section>
 
         <section className="invest-grid" aria-label="투자유치 게시글 목록">
+          {loading ? (
+            <div className="invest-detail-empty">불러오는 중...</div>
+          ) : null}
+          {error ? <div className="invest-detail-empty">{error}</div> : null}
+          {!loading && !error && filtered.length === 0 ? (
+            <div className="invest-detail-empty">등록된 게시글이 없습니다.</div>
+          ) : null}
           {filtered.map((it) => {
             if (it.kind === "preview") {
               const logoText = it.name.slice(0, 2).toUpperCase();
-              const locationText = [it.location, it.companySize]
+              const locationText = [
+                Array.isArray(it.locations) ? it.locations.join(", ") : it.location,
+                Array.isArray(it.companySizes)
+                  ? it.companySizes.join(", ")
+                  : it.companySize,
+              ]
                 .filter(Boolean)
                 .join(", ");
+              const detailPath = `/investment/${it.id}`;
+              const editPath = `/investment/edit/${it.id}`;
+              const isOwner =
+                currentUserId &&
+                it.authorId &&
+                String(currentUserId) === String(it.authorId);
+              const targetPath = isOwner ? editPath : detailPath;
 
               return (
                 <article
@@ -277,10 +256,10 @@ export default function InvestmentBoard({ onLogout }) {
                   className="invest-preview invest-preview--board"
                   role="button"
                   tabIndex={0}
-                  onClick={() => navigate(`/investment/edit/${it.id}`)}
+                  onClick={() => navigate(targetPath)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ")
-                      navigate(`/investment/edit/${it.id}`);
+                      navigate(targetPath);
                   }}
                 >
                   <div className="invest-preview-top">
@@ -326,10 +305,10 @@ export default function InvestmentBoard({ onLogout }) {
                 className="invest-card"
                 role="button"
                 tabIndex={0}
-                onClick={() => alert(`${it.name} 상세 페이지 (준비중)`)}
+                onClick={() => navigate(`/investment/${it.id}`)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ")
-                    alert(`${it.name} 상세 페이지 (준비중)`);
+                    navigate(`/investment/${it.id}`);
                 }}
               >
                 <div className="invest-card-head">
