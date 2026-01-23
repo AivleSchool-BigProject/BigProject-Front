@@ -121,7 +121,7 @@ export default function SignupApp() {
         setIsLoggedIn(true);
         navigate("/main");
       } else {
-        navigate("/login");
+        navigate("/auth/login");
       }
     } catch {
       setError("회원가입에 실패했습니다.");
@@ -335,7 +335,7 @@ export default function SignupApp() {
             <button
               type="button"
               className="primary"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/auth/login")}
               disabled={loading}
             >
               돌아가기

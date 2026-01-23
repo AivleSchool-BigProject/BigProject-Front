@@ -111,8 +111,8 @@ export default function App() {
       <Route path="/" element={<Login />} />
 
       {/* ✅ 로그인/계정 */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+      <Route path="/auth/login" element={<Login />} />
+      <Route path="/auth/register" element={<Signup />} />
       <Route path="/findid" element={<FindID />} />
       <Route path="/findpw" element={<FindPassword />} />
       <Route path="/easylogin" element={<EasyLogin />} />

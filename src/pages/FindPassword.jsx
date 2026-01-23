@@ -224,7 +224,7 @@ export default function FindPassword() {
             <button
               type="button"
               className="secondary"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/auth/login")}
               disabled={loading}
             >
               로그인 페이지로 이동
@@ -331,7 +331,7 @@ export default function FindPassword() {
             <button
               type="button"
               className="secondary"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/auth/login")}
               disabled={loading}
             >
               취소하고 로그인
@@ -349,7 +349,7 @@ export default function FindPassword() {
             <button
               className="primary"
               type="button"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/auth/login")}
             >
               로그인 페이지로 이동
             </button>

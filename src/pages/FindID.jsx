@@ -144,7 +144,7 @@ export default function FindID() {
           <button
             type="button"
             className="primary"
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/auth/login")}
             disabled={loading}
           >
             로그인 페이지로 이동

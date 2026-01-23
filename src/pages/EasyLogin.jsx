@@ -99,7 +99,7 @@ export default function EasyLogin() {
           <button
             type="button"
             className="easy-secondary"
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/auth/login")}
             disabled={!!loadingProvider}
           >
             일반 로그인으로 돌아가기
@@ -107,7 +107,7 @@ export default function EasyLogin() {
           <button
             type="button"
             className="easy-ghost"
-            onClick={() => navigate("/signup")}
+            onClick={() => navigate("/auth/register")}
             disabled={!!loadingProvider}
           >
             아직 계정이 없어요 (회원가입)

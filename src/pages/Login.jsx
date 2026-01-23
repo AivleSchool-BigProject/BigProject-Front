@@ -287,7 +287,7 @@ export default function LoginApp() {
               <button
                 type="button"
                 className="signup-cta"
-                onClick={() => navigate("/signup")}
+                onClick={() => navigate("/auth/register")}
                 disabled={loading}
               >
                 회원가입
