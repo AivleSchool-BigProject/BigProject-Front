@@ -36,7 +36,6 @@ export default function InvestmentPostEdit({ onLogout }) {
     company: "",
     oneLiner: "",
     locations: [],
-    detailAddress: "",
     companySizes: [],
     logoImageUrl: "",
     hashtags: ["", "", "", "", ""],
@@ -148,7 +147,6 @@ export default function InvestmentPostEdit({ onLogout }) {
           company: data.companyName || "",
           oneLiner: data.shortDescription || "",
           locations: data.region ? [data.region] : [],
-          detailAddress: "",
           companySizes: data.companySize ? [data.companySize] : [],
           logoImageUrl: data.logoImageUrl || "",
           hashtags: Array.isArray(data.hashtags)
@@ -386,18 +384,6 @@ export default function InvestmentPostEdit({ onLogout }) {
                   ) : null}
                 </div>
               </label>
-              <label className="invest-form-label">
-                상세 주소
-                <input
-                  type="text"
-                  value={form.detailAddress}
-                  onChange={updateField("detailAddress")}
-                  placeholder="상세 주소를 입력하세요"
-                />
-              </label>
-            </div>
-
-            <div className="invest-form-row">
               <label className="invest-form-label">
                 회사 규모
                 <div className="invest-location-select">

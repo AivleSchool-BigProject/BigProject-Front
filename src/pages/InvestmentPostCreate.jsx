@@ -34,7 +34,6 @@ export default function InvestmentPostCreate({ onLogout }) {
     company: "",
     oneLiner: "",
     locations: [],
-    detailAddress: "",
     companySizes: [],
     hashtags: ["", "", "", "", ""],
     website: "",
@@ -204,7 +203,6 @@ export default function InvestmentPostCreate({ onLogout }) {
         : draft?.location
           ? [draft.location]
           : prev.locations,
-      detailAddress: draft?.detailAddress ?? prev.detailAddress,
       companySizes: Array.isArray(draft?.companySizes)
         ? draft.companySizes
         : draft?.companySize
@@ -399,18 +397,6 @@ export default function InvestmentPostCreate({ onLogout }) {
                   ) : null}
                 </div>
               </label>
-              <label className="invest-form-label">
-                상세 주소
-                <input
-                  type="text"
-                  value={form.detailAddress}
-                  onChange={updateField("detailAddress")}
-                  placeholder="상세 주소를 입력하세요"
-                />
-              </label>
-            </div>
-
-            <div className="invest-form-row">
               <label className="invest-form-label">
                 회사 규모
                 <div className="invest-location-select">
