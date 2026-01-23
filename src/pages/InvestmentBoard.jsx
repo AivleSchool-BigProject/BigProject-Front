@@ -73,8 +73,8 @@ export default function InvestmentBoard({ onLogout }) {
   }, []);
 
   const handleOpenPost = (postId) => async () => {
-    const detailPath = `/investment/${postId}`;
-    const editPath = `/investment/edit/${postId}`;
+    const detailPath = `/brands/posts/${postId}`;
+    const editPath = `/brands/posts/${postId}/edit`;
     const token = getAccessToken();
     const tokenUserId = getTokenUserId(decodeJwtPayload(token));
 
@@ -200,7 +200,7 @@ export default function InvestmentBoard({ onLogout }) {
               <button
                 type="button"
                 className="btn"
-                onClick={() => navigate("/investment/new")}
+                onClick={() => navigate("/brands/posts/new")}
               >
                 게시글 등록
               </button>
@@ -329,10 +329,10 @@ export default function InvestmentBoard({ onLogout }) {
                 className="invest-card"
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate(`/investment/${it.id}`)}
+                onClick={() => navigate(`/brands/posts/${it.id}`)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ")
-                    navigate(`/investment/${it.id}`);
+                    navigate(`/brands/posts/${it.id}`);
                 }}
               >
                 <div className="invest-card-head">

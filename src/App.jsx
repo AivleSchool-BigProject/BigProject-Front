@@ -173,16 +173,16 @@ export default function App() {
 
       <Route path="/brand/result" element={<BrandConsultingResult />} />
 
-      <Route path="/investment" element={<InvestmentBoard />} />
+      <Route path="/brands/posts" element={<InvestmentBoard />} />
       {/* 
       2026-01-20
       등록페이지, 수정페이지 추가
       2026-01-21
       상세페이지 추가
       */}
-      <Route path="/investment/new" element={<InvestmentPostCreate />} />
-      <Route path="/investment/edit/:id" element={<InvestmentPostEdit />} />
-      <Route path="/investment/:id" element={<InvestmentPostDetail />} />
+      <Route path="/brands/posts/new" element={<InvestmentPostCreate />} />
+      <Route path="/brands/posts/:id/edit" element={<InvestmentPostEdit />} />
+      <Route path="/brands/posts/:id" element={<InvestmentPostDetail />} />
 
       {/* ✅ 없는 경로는 메인으로 */}
       <Route path="*" element={<Navigate to="/main" replace />} />

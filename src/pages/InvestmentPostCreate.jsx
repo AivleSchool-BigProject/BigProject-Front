@@ -169,7 +169,7 @@ export default function InvestmentPostCreate({ onLogout }) {
         },
       });
       localStorage.removeItem(DRAFT_STORAGE_KEY);
-      navigate("/investment");
+      navigate("/brands/posts");
     } catch (error) {
       console.error(error);
       setSubmitError("게시글 등록에 실패했습니다.");
@@ -292,7 +292,7 @@ export default function InvestmentPostCreate({ onLogout }) {
             <button
               type="button"
               className="btn ghost"
-              onClick={() => navigate("/investment")}
+              onClick={() => navigate("/brands/posts")}
             >
               목록으로
             </button>

@@ -131,7 +131,7 @@ export default function InvestmentPostDetail({ onLogout }) {
             <button
               type="button"
               className="btn"
-              onClick={() => navigate("/investment")}
+              onClick={() => navigate("/brands/posts")}
             >
               목록으로
             </button>
@@ -174,7 +174,7 @@ export default function InvestmentPostDetail({ onLogout }) {
             <button
               type="button"
               className="btn ghost"
-              onClick={() => navigate("/investment")}
+              onClick={() => navigate("/brands/posts")}
             >
               목록으로
             </button>
@@ -264,7 +264,7 @@ export default function InvestmentPostDetail({ onLogout }) {
                     alert("수정 권한이 없습니다.");
                     return;
                   }
-                  navigate(`/investment/edit/${item.id}`);
+                  navigate(`/brands/posts/${item.id}/edit`);
                 }}
               >
                 수정

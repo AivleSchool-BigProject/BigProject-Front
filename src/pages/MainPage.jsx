@@ -167,7 +167,7 @@ export default function MainPage({ onLogout }) {
             <button
               type="button"
               className="deal-more"
-              onClick={() => navigate("/investment")}
+              onClick={() => navigate("/brands/posts")}
             >
               전체보기 &gt;
             </button>
@@ -202,10 +202,10 @@ export default function MainPage({ onLogout }) {
                   className="deal-card"
                   role="button"
                   tabIndex={0}
-                  onClick={() => navigate(`/investment/${item.id}`)}
+                  onClick={() => navigate(`/brands/posts/${item.id}`)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ")
-                      navigate(`/investment/${item.id}`);
+                      navigate(`/brands/posts/${item.id}`);
                   }}
                 >
                   <div className="deal-card-head">

@@ -45,7 +45,7 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
     pathname === "/promotion" || pathname.startsWith("/promotion/");
 
   const isInvestmentRoute =
-    pathname === "/investment" || pathname.startsWith("/investment/");
+    pathname === "/brands/posts" || pathname.startsWith("/brands/posts/");
 
   const isActiveExact = (path) => pathname === path;
 
@@ -147,7 +147,7 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
   const handleInvestmentClick = () => {
     setBrandOpen(false);
     setPromoOpen(false);
-    navigate("/investment");
+    navigate("/brands/posts");
   };
 
   // ✅ 로그아웃 confirm + 0.5초 후 이동

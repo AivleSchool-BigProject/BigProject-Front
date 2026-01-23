@@ -211,7 +211,7 @@ export default function InvestmentPostEdit({ onLogout }) {
           "Content-Type": "multipart/form-data",
         },
       });
-      navigate("/investment");
+      navigate("/brands/posts");
     } catch (error) {
       console.error(error);
       setSubmitError("게시글 수정에 실패했습니다.");
@@ -228,7 +228,7 @@ export default function InvestmentPostEdit({ onLogout }) {
     } catch (error) {
       console.error(error);
     }
-    navigate("/investment");
+    navigate("/brands/posts");
   };
 
   return (
@@ -263,7 +263,7 @@ export default function InvestmentPostEdit({ onLogout }) {
             <button
               type="button"
               className="btn ghost"
-              onClick={() => navigate("/investment")}
+              onClick={() => navigate("/brands/posts")}
             >
               목록으로
             </button>
@@ -281,7 +281,7 @@ export default function InvestmentPostEdit({ onLogout }) {
               <button
                 type="button"
                 className="btn"
-                onClick={() => navigate("/investment")}
+                onClick={() => navigate("/brands/posts")}
               >
                 목록으로
               </button>
