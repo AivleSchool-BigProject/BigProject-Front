@@ -1,5 +1,5 @@
 ﻿// src/pages/MainPage.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import analyzeCompany from "../Image/main_image/companyanalyze.png";
@@ -10,8 +10,7 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 import SiteHeader from "../components/SiteHeader.jsx";
-
-const POSTS_STORAGE_KEY = "investmentPosts";
+import { apiRequest } from "../api/client.js";
 
 export default function MainPage({ onLogout }) {
   const navigate = useNavigate();
@@ -23,38 +22,48 @@ export default function MainPage({ onLogout }) {
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
-  const dealItems = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(POSTS_STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.slice(0, 6).map((item, index) => {
-        const tags = Array.isArray(item.hashtags)
-          ? item.hashtags.map((tag) => tag.trim()).filter(Boolean)
-          : [];
-        const company = item.company || "회사명";
-        const locationText = Array.isArray(item.locations)
-          ? item.locations.join(", ")
-          : item.location || "";
-        const sizeText = Array.isArray(item.companySizes)
-          ? item.companySizes.join(", ")
-          : item.companySize || "";
-        const meta = [sizeText, locationText].filter(Boolean).join(", ");
-        return {
-          id: item.id || `local-${index}`,
-          company,
-          oneLiner: item.oneLiner || "",
-          meta,
-          tags,
-          logoImageUrl: item.logoImageUrl || "",
-          updatedAt: item.updatedAt || "-",
-        };
-      });
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
+  const [dealItems, setDealItems] = useState([]);
+  const [dealLoading, setDealLoading] = useState(false);
+  const [dealError, setDealError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchDeals = async () => {
+      setDealLoading(true);
+      setDealError("");
+      try {
+        const data = await apiRequest("/brands/posts");
+        const list = Array.isArray(data) ? data : [];
+        const mapped = list.slice(0, 6).map((item) => {
+          const tags = Array.isArray(item.hashtags)
+            ? item.hashtags.map((tag) => tag.trim()).filter(Boolean)
+            : [];
+          const company = item.companyName || "회사명";
+          const locationText = item.region || "";
+          const sizeText = item.companySize || "";
+          const meta = [sizeText, locationText].filter(Boolean).join(", ");
+          return {
+            id: item.postId,
+            company,
+            oneLiner: item.shortDescription || "",
+            meta,
+            tags,
+            logoImageUrl: item.logoImageUrl || "",
+            updatedAt: item.updatedAt ? item.updatedAt.slice(0, 10) : "-",
+          };
+        });
+        if (mounted) setDealItems(mapped);
+      } catch (error) {
+        console.error(error);
+        if (mounted) setDealError("투자 라운지 게시글을 불러오지 못했습니다.");
+      } finally {
+        if (mounted) setDealLoading(false);
+      }
+    };
+    fetchDeals();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -165,7 +174,21 @@ export default function MainPage({ onLogout }) {
           </div>
 
           <div className="deal-grid">
-            {dealItems.length === 0 ? (
+            {dealLoading ? (
+              <div className="deal-card">
+                <div>
+                  <h4>불러오는 중...</h4>
+                  <p>투자 라운지 게시글을 불러오는 중입니다.</p>
+                </div>
+              </div>
+            ) : dealError ? (
+              <div className="deal-card">
+                <div>
+                  <h4>불러오기 실패</h4>
+                  <p>{dealError}</p>
+                </div>
+              </div>
+            ) : dealItems.length === 0 ? (
               <div className="deal-card">
                 <div>
                   <h4>등록된 기업이 없습니다.</h4>

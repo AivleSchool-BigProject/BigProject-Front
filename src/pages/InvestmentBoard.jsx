@@ -7,8 +7,8 @@ import SiteFooter from "../components/SiteFooter.jsx";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
-import { apiRequest } from "../api/client.js";
-import { getCurrentUserId } from "../api/auth.js";
+import { apiRequest, getAccessToken } from "../api/client.js";
+import { decodeJwtPayload, getTokenUserId } from "../utils/jwt.js";
 
 export default function InvestmentBoard({ onLogout }) {
   const navigate = useNavigate();
@@ -26,7 +26,6 @@ export default function InvestmentBoard({ onLogout }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const currentUserId = getCurrentUserId();
 
   useEffect(() => {
     let mounted = true;
@@ -72,6 +71,39 @@ export default function InvestmentBoard({ onLogout }) {
       mounted = false;
     };
   }, []);
+
+  const handleOpenPost = (postId) => async () => {
+    const detailPath = `/investment/${postId}`;
+    const editPath = `/investment/edit/${postId}`;
+    const token = getAccessToken();
+    const tokenUserId = getTokenUserId(decodeJwtPayload(token));
+
+    if (!tokenUserId) {
+      navigate(detailPath);
+      return;
+    }
+
+    try {
+      const data = await apiRequest(`/brands/posts/${postId}`);
+      const authorId =
+        data?.userId ??
+        data?.authorId ??
+        data?.memberId ??
+        data?.loginId ??
+        data?.createdBy ??
+        data?.user?.id ??
+        data?.user?.userId ??
+        null;
+      const isOwner =
+        authorId !== null &&
+        authorId !== undefined &&
+        String(tokenUserId) === String(authorId);
+      navigate(isOwner ? editPath : detailPath);
+    } catch (fetchError) {
+      console.error(fetchError);
+      navigate(detailPath);
+    }
+  };
 
   const filtered = useMemo(() => {
     const keyword = q.trim().toLowerCase();
@@ -242,24 +274,16 @@ export default function InvestmentBoard({ onLogout }) {
               ]
                 .filter(Boolean)
                 .join(", ");
-              const detailPath = `/investment/${it.id}`;
-              const editPath = `/investment/edit/${it.id}`;
-              const isOwner =
-                currentUserId &&
-                it.authorId &&
-                String(currentUserId) === String(it.authorId);
-              const targetPath = isOwner ? editPath : detailPath;
-
               return (
                 <article
                   key={it.id}
                   className="invest-preview invest-preview--board"
                   role="button"
                   tabIndex={0}
-                  onClick={() => navigate(targetPath)}
+                  onClick={handleOpenPost(it.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ")
-                      navigate(targetPath);
+                      handleOpenPost(it.id)();
                   }}
                 >
                   <div className="invest-preview-top">

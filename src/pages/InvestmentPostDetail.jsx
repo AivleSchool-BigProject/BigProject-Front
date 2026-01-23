@@ -6,7 +6,8 @@ import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
-import { apiRequest } from "../api/client.js";
+import { apiRequest, getAccessToken } from "../api/client.js";
+import { decodeJwtPayload, getTokenUserId } from "../utils/jwt.js";
 
 export default function InvestmentPostDetail({ onLogout }) {
   const navigate = useNavigate();
@@ -34,6 +35,15 @@ export default function InvestmentPostDetail({ onLogout }) {
           locations: data?.region ? [data.region] : [],
           companySizes: data?.companySize ? [data.companySize] : [],
           hashtags: Array.isArray(data?.hashtags) ? data.hashtags : [],
+          authorId:
+            data?.userId ??
+            data?.authorId ??
+            data?.memberId ??
+            data?.loginId ??
+            data?.createdBy ??
+            data?.user?.id ??
+            data?.user?.userId ??
+            null,
           contactName: data?.contactName || "",
           contactEmail: data?.contactEmail || "",
           summary: data?.companyDescription || "",
@@ -77,6 +87,13 @@ export default function InvestmentPostDetail({ onLogout }) {
     ? item.locations.join(", ")
     : item?.location || "-";
   const detailAddress = "-";
+  const tokenUserId = getTokenUserId(
+    decodeJwtPayload(getAccessToken())
+  );
+  const isOwner =
+    tokenUserId &&
+    item?.authorId &&
+    String(tokenUserId) === String(item.authorId);
 
   if (loading) {
     return (
@@ -152,13 +169,24 @@ export default function InvestmentPostDetail({ onLogout }) {
               투자 라운지에 등록된 기업의 상세 정보를 확인할 수 있습니다.
             </p>
           </div>
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={() => navigate("/investment")}
-          >
-            목록으로
-          </button>
+          <div className="invest-detail-hero-actions">
+            {isOwner ? (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => navigate(`/investment/edit/${item.id}`)}
+              >
+                수정하기
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => navigate("/investment")}
+            >
+              목록으로
+            </button>
+          </div>
         </div>
 
         <div className="invest-detail-grid">
