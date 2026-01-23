@@ -289,12 +289,17 @@
 .invest-detail-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 
 .invest-detail-footer span {
   font-size: 12px;
   color: #94a3b8;
+}
+
+.invest-detail-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .invest-detail-empty {

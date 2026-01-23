@@ -9,7 +9,8 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 // 2026-01-19
 // API 클라이언트 import
-import { apiRequest } from "../api/client.js";
+import { apiRequest, setAccessToken } from "../api/client.js";
+import { setCurrentUserId, setIsLoggedIn } from "../api/auth.js";
 
 export default function SignupApp() {
   const navigate = useNavigate();
@@ -98,7 +99,7 @@ export default function SignupApp() {
     // API 호출 로직
     setLoading(true);
     try {
-      await apiRequest("/auth/register", {
+      const data = await apiRequest("/auth/register", {
         method: "POST",
         data: {
           loginId: loginId.trim(),
@@ -108,7 +109,20 @@ export default function SignupApp() {
           username: name.trim(),
         },
       });
-      navigate("/login");
+      const token =
+        data?.accessToken ||
+        data?.token ||
+        data?.access_token ||
+        data?.jwt ||
+        data?.jwtToken;
+      if (token) {
+        setAccessToken(token);
+        setCurrentUserId(data?.userId || data?.loginId || loginId.trim());
+        setIsLoggedIn(true);
+        navigate("/main");
+      } else {
+        navigate("/login");
+      }
     } catch {
       setError("회원가입에 실패했습니다.");
     } finally {

@@ -87,6 +87,7 @@ export default function InvestmentPostDetail({ onLogout }) {
     ? item.locations.join(", ")
     : item?.location || "-";
   const detailAddress = "-";
+
   const tokenUserId = getTokenUserId(
     decodeJwtPayload(getAccessToken())
   );
@@ -170,15 +171,6 @@ export default function InvestmentPostDetail({ onLogout }) {
             </p>
           </div>
           <div className="invest-detail-hero-actions">
-            {isOwner ? (
-              <button
-                type="button"
-                className="btn"
-                onClick={() => navigate(`/investment/edit/${item.id}`)}
-              >
-                수정하기
-              </button>
-            ) : null}
             <button
               type="button"
               className="btn ghost"
@@ -263,6 +255,21 @@ export default function InvestmentPostDetail({ onLogout }) {
 
           <section className="invest-detail-block invest-detail-footer">
             <span>업데이트: {item.updatedAt || "-"}</span>
+            <div className="invest-detail-actions">
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => {
+                  if (!isOwner) {
+                    alert("수정 권한이 없습니다.");
+                    return;
+                  }
+                  navigate(`/investment/edit/${item.id}`);
+                }}
+              >
+                수정
+              </button>
+            </div>
           </section>
         </div>
       </main>
