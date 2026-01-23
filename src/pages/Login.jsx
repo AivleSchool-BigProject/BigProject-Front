@@ -50,8 +50,8 @@ export default function LoginApp() {
         // 2026-01-19
         // 백엔드와 같은 이름 사용
         data: {
-          id: loginId.trim(),
-          pwd: password,
+          loginId: loginId.trim(),
+          password: password,
         },
       });
       const token =
