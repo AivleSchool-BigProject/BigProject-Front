@@ -529,7 +529,7 @@ export default function InvestmentPostCreate({ onLogout }) {
                 임시 저장
               </button>
               <button type="submit" className="btn primary" disabled={loading}>
-                등록하기
+                등록
               </button>
             </div>
             {submitError ? (

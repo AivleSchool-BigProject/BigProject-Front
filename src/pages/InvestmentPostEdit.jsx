@@ -516,7 +516,7 @@ export default function InvestmentPostEdit({ onLogout }) {
                   삭제
                 </button>
                 <button type="submit" className="btn primary" disabled={loading}>
-                  수정 저장
+                  수정
                 </button>
               </div>
               {submitError ? (
