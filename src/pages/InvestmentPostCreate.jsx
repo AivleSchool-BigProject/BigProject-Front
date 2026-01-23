@@ -6,7 +6,7 @@ import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
-import { apiRequest } from "../api/client.js";
+import { apiRequest, getAccessToken } from "../api/client.js";
 
 const LOCATION_OPTIONS = [
   "수도권",
@@ -161,11 +161,13 @@ export default function InvestmentPostCreate({ onLogout }) {
     if (logoFile) formData.append("image", logoFile);
 
     try {
+      const token = getAccessToken();
       await apiRequest("/brands/posts", {
         method: "POST",
         data: formData,
         headers: {
           "Content-Type": "multipart/form-data",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
       localStorage.removeItem(DRAFT_STORAGE_KEY);
