@@ -206,14 +206,17 @@ export default function InvestmentPostEdit({ onLogout }) {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
-      navigate("/brands/posts");
+      alert("수정이 완료되었습니다!");
+      navigate(`/brands/posts/${id}`);
     } catch (error) {
       console.error(error);
-      if (error?.response?.status === 403) {
+      const status = error?.response?.status;
+      if (status === 403 || status === 500) {
         alert("수정 권한이 없습니다.");
+        navigate(-1);
         return;
       }
-      setSubmitError("게시글 수정에 실패했습니다.");
+      alert(`오류가 발생했습니다. (에러코드: ${status})`);
     } finally {
       setLoading(false);
     }
