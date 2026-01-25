@@ -7,7 +7,6 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { apiRequest, getAccessToken } from "../api/client.js";
-import { decodeJwtPayload, getTokenUserId } from "../utils/jwt.js";
 
 export default function InvestmentPostDetail({ onLogout }) {
   const navigate = useNavigate();
@@ -86,15 +85,28 @@ export default function InvestmentPostDetail({ onLogout }) {
   const locationText = Array.isArray(item?.locations)
     ? item.locations.join(", ")
     : item?.location || "-";
-  const detailAddress = "-";
 
-  const tokenUserId = getTokenUserId(
-    decodeJwtPayload(getAccessToken())
-  );
-  const isOwner =
-    tokenUserId &&
-    item?.authorId &&
-    String(tokenUserId) === String(item.authorId);
+  const handleEditClick = async (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    try {
+      const token = getAccessToken();
+      await apiRequest(`/brands/posts/${item.id}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      navigate(`/brands/posts/${item.id}/edit`);
+    } catch (error) {
+      if (error?.response?.status === 403) {
+        alert("수정 권한이 없습니다.");
+        return;
+      }
+      console.error("기타 에러 발생:", error);
+      alert("데이터를 불러오는 중 문제가 발생했습니다.");
+    }
+  };
+
 
   if (loading) {
     return (
@@ -234,14 +246,6 @@ export default function InvestmentPostDetail({ onLogout }) {
                   <span>{locationText}</span>
                 </li>
                 <li>
-                  <strong>상세 주소</strong>
-                  <span>{detailAddress}</span>
-                </li>
-                <li className="invest-detail-fields-group">
-                  <strong>홈페이지</strong>
-                  <span>-</span>
-                </li>
-                <li>
                   <strong>담당자</strong>
                   <span>{item.contactName || "-"}</span>
                 </li>
@@ -259,13 +263,7 @@ export default function InvestmentPostDetail({ onLogout }) {
               <button
                 type="button"
                 className="btn primary"
-                onClick={() => {
-                  if (!isOwner) {
-                    alert("수정 권한이 없습니다.");
-                    return;
-                  }
-                  navigate(`/brands/posts/${item.id}/edit`);
-                }}
+                onClick={handleEditClick}
               >
                 수정
               </button>

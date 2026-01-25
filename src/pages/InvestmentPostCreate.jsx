@@ -36,14 +36,11 @@ export default function InvestmentPostCreate({ onLogout }) {
     locations: [],
     companySizes: [],
     hashtags: ["", "", "", "", ""],
-    website: "",
     contactName: "",
     contactEmail: "",
     summary: "",
   });
-  const [errors, setErrors] = useState({
-    website: "",
-  });
+  const [errors, setErrors] = useState({});
   const [logoFileName, setLogoFileName] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
   const [logoFile, setLogoFile] = useState(null);
@@ -58,16 +55,6 @@ export default function InvestmentPostCreate({ onLogout }) {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
   };
 
-  const validateUrl = (value) => {
-    if (!value) return "";
-    return value.startsWith("http://") || value.startsWith("https://")
-      ? ""
-      : "http:// 또는 https://로 시작해야 합니다.";
-  };
-
-  const handleUrlBlur = (key) => (event) => {
-    setErrors((prev) => ({ ...prev, [key]: validateUrl(event.target.value) }));
-  };
 
   const handleLogoChange = (event) => {
     const file = event.target.files?.[0];
@@ -85,6 +72,23 @@ export default function InvestmentPostCreate({ onLogout }) {
       setLogoPreview(typeof reader.result === "string" ? reader.result : "");
     };
     reader.readAsDataURL(file);
+  };
+
+  const dataUrlToBlob = (dataUrl) => {
+    if (!dataUrl || typeof dataUrl !== "string") return null;
+    if (!dataUrl.startsWith("data:")) return null;
+    const parts = dataUrl.split(",");
+    if (parts.length < 2) return null;
+    const match = parts[0].match(/data:(.*);base64/);
+    if (!match) return null;
+    const mime = match[1] || "image/png";
+    const binary = atob(parts[1]);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
   };
 
   const toggleLocation = (value) => {
@@ -130,11 +134,7 @@ export default function InvestmentPostCreate({ onLogout }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const nextErrors = {
-      website: validateUrl(form.website),
-    };
-    setErrors(nextErrors);
-    if (nextErrors.website) return;
+    setErrors({});
     setSubmitError("");
     setLoading(true);
 
@@ -158,7 +158,14 @@ export default function InvestmentPostCreate({ onLogout }) {
       "data",
       new Blob([JSON.stringify(payload)], { type: "application/json" })
     );
-    if (logoFile) formData.append("image", logoFile);
+    if (logoFile) {
+      formData.append("image", logoFile);
+    } else {
+      const draftBlob = dataUrlToBlob(logoPreview);
+      if (draftBlob) {
+        formData.append("image", draftBlob, "draft-logo.png");
+      }
+    }
 
     try {
       const token = getAccessToken();
@@ -347,10 +354,17 @@ export default function InvestmentPostCreate({ onLogout }) {
               <label className="invest-form-label">
                 지역
                 <div className="invest-location-select">
-                  <button
-                    type="button"
+                  <div
                     className="invest-location-control"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setLocationOpen((prev) => !prev)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setLocationOpen((prev) => !prev);
+                      }
+                    }}
                     aria-expanded={locationOpen ? "true" : "false"}
                   >
                     <div className="invest-location-chips">
@@ -377,7 +391,7 @@ export default function InvestmentPostCreate({ onLogout }) {
                     <span className={`chev ${locationOpen ? "is-open" : ""}`}>
                       ▾
                     </span>
-                  </button>
+                  </div>
                   {locationOpen ? (
                     <div className="invest-location-panel">
                       {LOCATION_OPTIONS.map((loc) => {
@@ -402,10 +416,17 @@ export default function InvestmentPostCreate({ onLogout }) {
               <label className="invest-form-label">
                 회사 규모
                 <div className="invest-location-select">
-                  <button
-                    type="button"
+                  <div
                     className="invest-location-control"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSizeOpen((prev) => !prev)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSizeOpen((prev) => !prev);
+                      }
+                    }}
                     aria-expanded={sizeOpen ? "true" : "false"}
                   >
                     <div className="invest-location-chips">
@@ -432,7 +453,7 @@ export default function InvestmentPostCreate({ onLogout }) {
                     <span className={`chev ${sizeOpen ? "is-open" : ""}`}>
                       ▾
                     </span>
-                  </button>
+                  </div>
                   {sizeOpen ? (
                     <div className="invest-location-panel">
                       {COMPANY_SIZE_OPTIONS.map((size) => {
@@ -479,16 +500,6 @@ export default function InvestmentPostCreate({ onLogout }) {
 
             <div className="invest-form-row two-col">
               <label className="invest-form-label">
-                공식 홈페이지
-                <input
-                  type="url"
-                  value={form.website}
-                  onChange={updateField("website")}
-                  onBlur={handleUrlBlur("website")}
-                  placeholder="https://"
-                />
-              </label>
-              <label className="invest-form-label">
                 담당자 이름
                 <input
                   type="text"
@@ -498,9 +509,6 @@ export default function InvestmentPostCreate({ onLogout }) {
                 />
               </label>
             </div>
-            {errors.website ? (
-              <div className="invest-form-error">{errors.website}</div>
-            ) : null}
 
             <div className="invest-form-row">
               <label className="invest-form-label">
@@ -582,7 +590,7 @@ export default function InvestmentPostCreate({ onLogout }) {
               <ul>
                 <li>회사명과 한 줄 소개는 투자자가 한눈에 이해할 수 있게 작성해 주세요.</li>
                 <li>태그는 핵심 키워드 위주로 최대 5개까지 입력해 주세요.</li>
-                <li>로고 이미지와 공식 홈페이지를 입력하면 게시글 완성도가 높아집니다.</li>
+                <li>로고 이미지를 입력하면 게시글 완성도가 높아집니다.</li>
               </ul>
             </div>
           </aside>

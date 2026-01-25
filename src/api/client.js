@@ -49,6 +49,24 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+apiClient.interceptors.response.use(
+  (response) => {
+    const authHeader =
+      response.headers?.authorization ||
+      response.headers?.Authorization ||
+      response.headers?.["access-token"] ||
+      response.headers?.["x-access-token"];
+    if (authHeader) {
+      const token = authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : authHeader;
+      setAccessToken(token);
+    }
+    return response;
+  },
+  (error) => Promise.reject(error)
+);
+
 export const apiRequest = async (path, options = {}) => {
   const response = await apiClient.request({
     url: path,

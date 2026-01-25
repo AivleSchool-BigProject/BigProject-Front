@@ -8,7 +8,7 @@ import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
-import { apiRequest } from "../api/client.js";
+import { apiRequest, getAccessToken } from "../api/client.js";
 
 const LOCATION_OPTIONS = [
   "수도권",
@@ -39,14 +39,11 @@ export default function InvestmentPostEdit({ onLogout }) {
     companySizes: [],
     logoImageUrl: "",
     hashtags: ["", "", "", "", ""],
-    website: "",
     contactName: "",
     contactEmail: "",
     summary: "",
   });
-  const [errors, setErrors] = useState({
-    website: "",
-  });
+  const [errors, setErrors] = useState({});
   const [notFound, setNotFound] = useState(false);
   const [logoFileName, setLogoFileName] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
@@ -60,16 +57,6 @@ export default function InvestmentPostEdit({ onLogout }) {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
   };
 
-  const validateUrl = (value) => {
-    if (!value) return "";
-    return value.startsWith("http://") || value.startsWith("https://")
-      ? ""
-      : "http:// 또는 https://로 시작해야 합니다.";
-  };
-
-  const handleUrlBlur = (key) => (event) => {
-    setErrors((prev) => ({ ...prev, [key]: validateUrl(event.target.value) }));
-  };
 
   const tagList = useMemo(() => {
     return form.hashtags.map((tag) => tag.trim()).filter(Boolean);
@@ -136,7 +123,12 @@ export default function InvestmentPostEdit({ onLogout }) {
       setLoading(true);
       setNotFound(false);
       try {
-        const data = await apiRequest(`/brands/posts/${id}`);
+        const token = getAccessToken();
+        const data = await apiRequest(`/brands/posts/${id}`, {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
         if (!data) {
           if (mounted) setNotFound(true);
           return;
@@ -152,7 +144,6 @@ export default function InvestmentPostEdit({ onLogout }) {
           hashtags: Array.isArray(data.hashtags)
             ? [...data.hashtags, "", "", "", "", ""].slice(0, 5)
             : prev.hashtags,
-          website: "",
           contactName: data.contactName || "",
           contactEmail: data.contactEmail || "",
           summary: data.companyDescription || "",
@@ -160,6 +151,11 @@ export default function InvestmentPostEdit({ onLogout }) {
         setLogoPreview(data.logoImageUrl || "");
       } catch (error) {
         console.error(error);
+        if (error?.response?.status === 403) {
+          alert("수정 권한이 없습니다.");
+          navigate(-1);
+          return;
+        }
         if (mounted) setNotFound(true);
       } finally {
         if (mounted) setLoading(false);
@@ -173,11 +169,8 @@ export default function InvestmentPostEdit({ onLogout }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const nextErrors = {
-      website: validateUrl(form.website),
-    };
-    setErrors(nextErrors);
-    if (nextErrors.website) return;
+    console.log("실제로 버튼이 클릭되어 함수가 실행됨!");
+    setErrors({});
     setSubmitError("");
     setLoading(true);
 
@@ -204,16 +197,22 @@ export default function InvestmentPostEdit({ onLogout }) {
     if (logoFile) formData.append("image", logoFile);
 
     try {
+      const token = getAccessToken();
       await apiRequest(`/brands/posts/${id}`, {
         method: "PUT",
         data: formData,
         headers: {
           "Content-Type": "multipart/form-data",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
       navigate("/brands/posts");
     } catch (error) {
       console.error(error);
+      if (error?.response?.status === 403) {
+        alert("수정 권한이 없습니다.");
+        return;
+      }
       setSubmitError("게시글 수정에 실패했습니다.");
     } finally {
       setLoading(false);
@@ -224,11 +223,24 @@ export default function InvestmentPostEdit({ onLogout }) {
     const ok = window.confirm("정말 삭제하시겠습니까?");
     if (!ok) return;
     try {
-      await apiRequest(`/brands/posts/${id}`, { method: "DELETE" });
+      const token = getAccessToken();
+      await apiRequest(`/brands/posts/${id}`, {
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      alert("삭제되었습니다.");
+      navigate("/brands/posts");
+      return;
     } catch (error) {
       console.error(error);
+      if (error?.response?.status === 403) {
+        alert("삭제 권한이 없습니다.");
+        return;
+      }
+      alert("삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.");
     }
-    navigate("/brands/posts");
   };
 
   return (
@@ -332,10 +344,17 @@ export default function InvestmentPostEdit({ onLogout }) {
               <label className="invest-form-label">
                 지역
                 <div className="invest-location-select">
-                  <button
-                    type="button"
+                  <div
                     className="invest-location-control"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setLocationOpen((prev) => !prev)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setLocationOpen((prev) => !prev);
+                      }
+                    }}
                     aria-expanded={locationOpen ? "true" : "false"}
                   >
                     <div className="invest-location-chips">
@@ -345,16 +364,24 @@ export default function InvestmentPostEdit({ onLogout }) {
                         form.locations.map((loc) => (
                           <span key={loc} className="invest-location-chip">
                             {loc}
-                            <button
-                              type="button"
+                            <span
+                              role="button"
+                              tabIndex={0}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 removeLocation(loc);
                               }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  removeLocation(loc);
+                                }
+                              }}
                               aria-label={`${loc} 제거`}
                             >
                               x
-                            </button>
+                            </span>
                           </span>
                         ))
                       )}
@@ -362,7 +389,7 @@ export default function InvestmentPostEdit({ onLogout }) {
                     <span className={`chev ${locationOpen ? "is-open" : ""}`}>
                       ▾
                     </span>
-                  </button>
+                  </div>
                   {locationOpen ? (
                     <div className="invest-location-panel">
                       {LOCATION_OPTIONS.map((loc) => {
@@ -387,10 +414,17 @@ export default function InvestmentPostEdit({ onLogout }) {
               <label className="invest-form-label">
                 회사 규모
                 <div className="invest-location-select">
-                  <button
-                    type="button"
+                  <div
                     className="invest-location-control"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSizeOpen((prev) => !prev)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSizeOpen((prev) => !prev);
+                      }
+                    }}
                     aria-expanded={sizeOpen ? "true" : "false"}
                   >
                     <div className="invest-location-chips">
@@ -400,16 +434,24 @@ export default function InvestmentPostEdit({ onLogout }) {
                         form.companySizes.map((size) => (
                           <span key={size} className="invest-location-chip">
                             {size}
-                            <button
-                              type="button"
+                            <span
+                              role="button"
+                              tabIndex={0}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 removeCompanySize(size);
                               }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  removeCompanySize(size);
+                                }
+                              }}
                               aria-label={`${size} 제거`}
                             >
                               x
-                            </button>
+                            </span>
                           </span>
                         ))
                       )}
@@ -417,7 +459,7 @@ export default function InvestmentPostEdit({ onLogout }) {
                     <span className={`chev ${sizeOpen ? "is-open" : ""}`}>
                       ▾
                     </span>
-                  </button>
+                  </div>
                   {sizeOpen ? (
                     <div className="invest-location-panel">
                       {COMPANY_SIZE_OPTIONS.map((size) => {
@@ -464,16 +506,6 @@ export default function InvestmentPostEdit({ onLogout }) {
 
               <div className="invest-form-row two-col">
                 <label className="invest-form-label">
-                  공식 홈페이지
-                  <input
-                    type="url"
-                    value={form.website}
-                    onChange={updateField("website")}
-                    onBlur={handleUrlBlur("website")}
-                    placeholder="https://"
-                  />
-                </label>
-                <label className="invest-form-label">
                   담당자 이름
                   <input
                     type="text"
@@ -483,9 +515,6 @@ export default function InvestmentPostEdit({ onLogout }) {
                   />
                 </label>
               </div>
-              {errors.website ? (
-                <div className="invest-form-error">{errors.website}</div>
-              ) : null}
 
               <div className="invest-form-row">
                 <label className="invest-form-label">
