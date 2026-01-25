@@ -7,8 +7,7 @@ import SiteFooter from "../components/SiteFooter.jsx";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
-import { apiRequest, getAccessToken } from "../api/client.js";
-import { decodeJwtPayload, getTokenUserId } from "../utils/jwt.js";
+import { apiRequest } from "../api/client.js";
 
 export default function InvestmentBoard({ onLogout }) {
   const navigate = useNavigate();
@@ -72,37 +71,8 @@ export default function InvestmentBoard({ onLogout }) {
     };
   }, []);
 
-  const handleOpenPost = (postId) => async () => {
-    const detailPath = `/brands/posts/${postId}`;
-    const editPath = `/brands/posts/${postId}/edit`;
-    const token = getAccessToken();
-    const tokenUserId = getTokenUserId(decodeJwtPayload(token));
-
-    if (!tokenUserId) {
-      navigate(detailPath);
-      return;
-    }
-
-    try {
-      const data = await apiRequest(`/brands/posts/${postId}`);
-      const authorId =
-        data?.userId ??
-        data?.authorId ??
-        data?.memberId ??
-        data?.loginId ??
-        data?.createdBy ??
-        data?.user?.id ??
-        data?.user?.userId ??
-        null;
-      const isOwner =
-        authorId !== null &&
-        authorId !== undefined &&
-        String(tokenUserId) === String(authorId);
-      navigate(isOwner ? editPath : detailPath);
-    } catch (fetchError) {
-      console.error(fetchError);
-      navigate(detailPath);
-    }
+  const handleOpenPost = (postId) => () => {
+    navigate(`/brands/posts/${postId}`);
   };
 
   const filtered = useMemo(() => {
