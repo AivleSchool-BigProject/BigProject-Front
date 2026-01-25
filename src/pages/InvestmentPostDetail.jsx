@@ -25,7 +25,15 @@ export default function InvestmentPostDetail({ onLogout }) {
       setLoading(true);
       setError("");
       try {
-        const data = await apiRequest(`/brands/posts/${id}`);
+        const token = getAccessToken();
+        
+        // 상세 데이터 요청 시 토큰을 실어 보내야 백엔드가 owner 여부를 판단할 수 있습니다.
+        const data = await apiRequest(`/brands/posts/${id}`, {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+
         const mapped = {
           id: data?.postId,
           company: data?.companyName || "",
@@ -34,22 +42,14 @@ export default function InvestmentPostDetail({ onLogout }) {
           locations: data?.region ? [data.region] : [],
           companySizes: data?.companySize ? [data.companySize] : [],
           hashtags: Array.isArray(data?.hashtags) ? data.hashtags : [],
-          authorId:
-            data?.userId ??
-            data?.authorId ??
-            data?.memberId ??
-            data?.loginId ??
-            data?.createdBy ??
-            data?.user?.id ??
-            data?.user?.userId ??
-            null,
+          // 백엔드 응답 필드명인 'owner'를 그대로 매핑합니다.
+          isOwner: data?.owner || false, 
           contactName: data?.contactName || "",
           contactEmail: data?.contactEmail || "",
           summary: data?.companyDescription || "",
-          updatedAt: data?.updatedAt
-            ? data.updatedAt.slice(0, 10)
-            : "",
+          updatedAt: data?.updatedAt ? data.updatedAt.slice(0, 10) : "",
         };
+
         if (mounted) setItem(mapped);
       } catch (err) {
         console.error(err);
@@ -58,6 +58,7 @@ export default function InvestmentPostDetail({ onLogout }) {
         if (mounted) setLoading(false);
       }
     };
+
     fetchPost();
     return () => {
       mounted = false;
@@ -86,27 +87,25 @@ export default function InvestmentPostDetail({ onLogout }) {
     ? item.locations.join(", ")
     : item?.location || "-";
 
-  const handleEditClick = async (event) => {
+  // --- 수정 버튼 클릭 시 권한 체크 로직 ---
+  const handleEditClick = (event) => {
     event.stopPropagation();
     event.preventDefault();
-    try {
-      const token = getAccessToken();
-      await apiRequest(`/brands/posts/${item.id}`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
+
+    const token = getAccessToken();
+    if (!token) {
+      alert("로그인이 필요한 서비스입니다.");
+      return;
+    }
+
+    // 서버가 넘겨준 isOwner(owner 필드) 값이 true일 때만 페이지 이동.
+    if (item.isOwner) {
       navigate(`/brands/posts/${item.id}/edit`);
-    } catch (error) {
-      if (error?.response?.status === 403) {
-        alert("수정 권한이 없습니다.");
-        return;
-      }
-      console.error("기타 에러 발생:", error);
-      alert("데이터를 불러오는 중 문제가 발생했습니다.");
+    } else {
+      // 본인이 아닐 경우(owner: false) alert 출력
+      alert("수정 권한이 없습니다. 작성자 본인만 수정 가능합니다.");
     }
   };
-
 
   if (loading) {
     return (
@@ -120,26 +119,13 @@ export default function InvestmentPostDetail({ onLogout }) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="invest-detail-page">
-        <SiteHeader onLogout={onLogout} />
-        <main className="invest-detail-main">
-          <div className="invest-detail-empty">{error}</div>
-        </main>
-        <SiteFooter onOpenPolicy={setOpenType} />
-      </div>
-    );
-  }
-
-
-  if (!item) {
+  if (error || !item) {
     return (
       <div className="invest-detail-page">
         <SiteHeader onLogout={onLogout} />
         <main className="invest-detail-main">
           <div className="invest-detail-empty">
-            <h2>게시글을 찾을 수 없습니다.</h2>
+            <h2>{error || "게시글을 찾을 수 없습니다."}</h2>
             <button
               type="button"
               className="btn"
@@ -156,19 +142,11 @@ export default function InvestmentPostDetail({ onLogout }) {
 
   return (
     <div className="invest-detail-page">
-      <PolicyModal
-        open={openType === "privacy"}
-        title="개인정보 처리방침"
-        onClose={closeModal}
-      >
+      <PolicyModal open={openType === "privacy"} title="개인정보 처리방침" onClose={closeModal}>
         <PrivacyContent />
       </PolicyModal>
 
-      <PolicyModal
-        open={openType === "terms"}
-        title="이용약관"
-        onClose={closeModal}
-      >
+      <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
         <TermsContent />
       </PolicyModal>
 
@@ -178,16 +156,10 @@ export default function InvestmentPostDetail({ onLogout }) {
         <div className="invest-detail-hero">
           <div>
             <h1>상세 정보</h1>
-            <p className="invest-detail-sub">
-              투자 라운지에 등록된 기업의 상세 정보를 확인할 수 있습니다.
-            </p>
+            <p className="invest-detail-sub">투자 라운지에 등록된 기업의 상세 정보를 확인할 수 있습니다.</p>
           </div>
           <div className="invest-detail-hero-actions">
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => navigate("/brands/posts")}
-            >
+            <button type="button" className="btn ghost" onClick={() => navigate("/brands/posts")}>
               목록으로
             </button>
           </div>
@@ -215,18 +187,14 @@ export default function InvestmentPostDetail({ onLogout }) {
               <div className="invest-detail-panel-section">
                 <div className="invest-detail-panel-title">회사 규모·지역</div>
                 <div className="invest-detail-right-meta">
-                  {metaItems.map((value) => (
-                    <span key={value}>{value}</span>
-                  ))}
+                  {metaItems.map((value) => <span key={value}>{value}</span>)}
                 </div>
               </div>
               <div className="invest-detail-panel-divider" />
               <div className="invest-detail-panel-section">
                 <div className="invest-detail-panel-title">해시태그</div>
                 <div className="invest-detail-right-tags">
-                  {tags.map((tag) => (
-                    <span key={tag}>#{tag}</span>
-                  ))}
+                  {tags.map((tag) => <span key={tag}>#{tag}</span>)}
                 </div>
               </div>
             </div>
@@ -241,18 +209,9 @@ export default function InvestmentPostDetail({ onLogout }) {
             <section className="invest-detail-block invest-detail-fields">
               <h3>등록 정보</h3>
               <ul>
-                <li>
-                  <strong>지역</strong>
-                  <span>{locationText}</span>
-                </li>
-                <li>
-                  <strong>담당자</strong>
-                  <span>{item.contactName || "-"}</span>
-                </li>
-                <li>
-                  <strong>이메일</strong>
-                  <span>{item.contactEmail || "-"}</span>
-                </li>
+                <li><strong>지역</strong><span>{locationText}</span></li>
+                <li><strong>담당자</strong><span>{item.contactName || "-"}</span></li>
+                <li><strong>이메일</strong><span>{item.contactEmail || "-"}</span></li>
               </ul>
             </section>
           </div>
@@ -260,6 +219,7 @@ export default function InvestmentPostDetail({ onLogout }) {
           <section className="invest-detail-block invest-detail-footer">
             <span>업데이트: {item.updatedAt || "-"}</span>
             <div className="invest-detail-actions">
+              {/* 버튼은 누구에게나 보여주되, 클릭 시 handleEditClick에서 권한을 검사합니다. */}
               <button
                 type="button"
                 className="btn primary"
