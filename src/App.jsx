@@ -1,191 +1,164 @@
-// // src/App.jsx
-// import { Routes, Route, Navigate } from "react-router-dom";
-
-// import Login from "./pages/Login.jsx";
-// import Signup from "./pages/Signup.jsx";
-// import FindID from "./pages/FindID.jsx";
-// import FindPassword from "./pages/FindPassword.jsx";
-// import MainPage from "./pages/MainPage.jsx";
-// import DiagnosisHome from "./pages/DiagnosisHome.jsx";
-// import EasyLogin from "./pages/EasyLogin.jsx";
-// import BrandConsulting from "./pages/BrandConsulting.jsx";
-// import DiagnosisInterview from "./pages/DiagnosisInterview.jsx";
-
-// import NamingConsultingInterview from "./pages/NamingConsultingInterview.jsx";
-// import LogoConsultingInterview from "./pages/LogoConsultingInterview.jsx";
-
-// // ✅ 여기 오타 주의: Hompage -> Homepage (파일명에 맞춰서 사용)
-// import HomepageConsultingInterview from "./pages/HomepageConsultingInterview.jsx";
-// // import HomepageConsultingInterview from "./pages/HompageConsultingInterview.jsx";
-
-// export default function App() {
-//   return (
-//     <Routes>
-//       {/* 로그인/메인 */}
-//       <Route path="/" element={<Login />} />
-//       <Route path="/main" element={<MainPage />} />
-//       <Route path="/login" element={<Login />} />
-//       <Route path="/signup" element={<Signup />} />
-//       <Route path="/findid" element={<FindID />} />
-//       <Route path="/findpw" element={<FindPassword />} />
-//       {/* 진단 */}
-//       <Route path="/diagnosis" element={<DiagnosisHome />} />
-//       <Route path="/diagnosisinterview" element={<DiagnosisInterview />} />
-//       {/* 간편 로그인 */}
-//       <Route path="/easylogin" element={<EasyLogin />} />
-//       {/* 브랜드 컨설팅 메인 */}
-//       <Route path="/brandconsulting" element={<BrandConsulting />} />
-
-//       {/* ✅ 기존 너가 쓰던 인터뷰 경로들 (유지) */}
-//       <Route path="/logoconsulting" element={<LogoConsultingInterview />} />
-//       <Route
-//         path="/homepageconsulting"
-//         element={<HomepageConsultingInterview />}
-//       />
-//       {/* ✅ (추천) 헷갈림 방지: naming 풀네임 alias도 같이 지원 */}
-//       <Route path="/namingconsulting" element={<NamingConsultingInterview />} />
-//       <Route
-//         path="/brand/naming/interview"
-//         element={<NamingConsultingInterview />}
-//       />
-//       <Route
-//         path="/brand/logo/interview"
-//         element={<LogoConsultingInterview />}
-//       />
-//       <Route
-//         path="/brand/homepage/interview"
-//         element={<HomepageConsultingInterview />}
-//       />
-//       {/* 없는 경로는 메인으로 */}
-//       <Route path="*" element={<Navigate to="/main" replace />} />
-//     </Routes>
-//   );
-// }
-
 // src/App.jsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
-import Login from "./pages/Login.jsx";
-import Signup from "./pages/Signup.jsx";
-import FindID from "./pages/FindID.jsx";
-import FindPassword from "./pages/FindPassword.jsx";
+import Login from "./pages/auth/Login.jsx";
+import Signup from "./pages/auth/Signup.jsx";
+import FindID from "./pages/auth/FindID.jsx";
+import FindPassword from "./pages/auth/FindPassword.jsx";
+import EasyLogin from "./pages/auth/EasyLogin.jsx";
 
-import MainPage from "./pages/MainPage.jsx";
+import MainPage from "./pages/main/MainPage.jsx";
 
-import DiagnosisHome from "./pages/DiagnosisHome.jsx";
-import DiagnosisInterview from "./pages/DiagnosisInterview.jsx";
+import DiagnosisHome from "./pages/diagnosis/DiagnosisHome.jsx";
+import DiagnosisInterview from "./pages/diagnosis/DiagnosisInterview.jsx";
+import DiagnosisResult from "./pages/diagnosis/DiagnosisResult.jsx";
 
-import EasyLogin from "./pages/EasyLogin.jsx";
+import BrandConsulting from "./pages/brand/BrandConsulting.jsx";
+import NamingConsultingInterview from "./pages/brand/NamingConsultingInterview.jsx";
+import LogoConsultingInterview from "./pages/brand/LogoConsultingInterview.jsx";
+import ConceptConsultingInterview from "./pages/brand/ConceptConsultingInterview.jsx";
+import BrandStoryConsultingInterview from "./pages/brand/BrandStoryConsultingInterview.jsx";
+import BrandConsultingResult from "./pages/brand/BrandConsultingResult.jsx";
+import BrandAllResults from "./pages/brand/BrandAllResults.jsx";
 
-import BrandConsulting from "./pages/BrandConsulting.jsx";
+import PromotionPage from "./pages/promotion/Promotion.jsx";
+import ProductIconConsultingInterview from "./pages/promotion/ProductIconConsultingInterview.jsx";
+import AICutModelConsultingInterview from "./pages/promotion/AICutModelConsultingInterview.jsx";
+import ProductStagingCutConsultingInterview from "./pages/promotion/ProductStagingCutConsultingInterview.jsx";
+import SNSPosterConsultingInterview from "./pages/promotion/SNSPosterConsultingInterview.jsx";
+import PromotionResult from "./pages/promotion/PromotionResult.jsx";
+import PromotionAllResults from "./pages/promotion/PromotionAllResults.jsx";
 
-import NamingConsultingInterview from "./pages/NamingConsultingInterview.jsx";
-import LogoConsultingInterview from "./pages/LogoConsultingInterview.jsx";
-import HomepageConsultingInterview from "./pages/HomepageConsultingInterview.jsx";
+import MyPage from "./pages/mypage/MyPage.jsx";
 
-import PromotionPage from "./pages/Promotion.jsx";
-import MyPage from "./pages/MyPage.jsx";
-import DigitalImageConsultingInterview from "./pages/DigitalImageConsultingInterview.jsx";
-import OfflineImageConsultingInterview from "./pages/OfflineImageConsultingInterview.jsx";
+import InvestmentBoard from "./pages/investment/InvestmentBoard.jsx";
+import InvestmentPostEdit from "./pages/investment/InvestmentPostEdit.jsx";
+import InvestmentPostCreate from "./pages/investment/InvestmentPostCreate.jsx";
+import InvestmentPostDetail from "./pages/investment/InvestmentPostDetail.jsx";
 
-import PromoVideoConsultingInterview from "./pages/PromoVideoConsultingInterview.jsx";
-
-import DiagnosisResult from "./pages/DiagnosisResult.jsx";
-import PromotionResult from "./pages/PromotionResult.jsx";
-
-import BrandConsultingResult from "./pages/BrandConsultingResult.jsx";
-
-import InvestmentBoard from "./pages/InvestmentBoard.jsx";
-// 2026-01-20
-// 등록페이지, 수정페이지 추가
-// 2026-01-21
-// 상세 페이지 추가
-import InvestmentPostEdit from "./pages/InvestmentPostEdit.jsx";
-import InvestmentPostCreate from "./pages/InvestmentPostCreate.jsx";
-import InvestmentPostDetail from "./pages/InvestmentPostDetail.jsx";
+import ChatbotWidget from "./components/chatbot/ChatbotWidget.jsx";
 
 export default function App() {
+  const { pathname } = useLocation();
+
+  // ✅ 로그인/회원가입 관련 페이지에서는 숨김
+  const hideChatbotPaths = [
+    "/",
+    "/login",
+    "/signup",
+    "/findid",
+    "/findpw",
+    "/easylogin",
+  ];
+  const shouldHideChatbot = hideChatbotPaths.includes(pathname);
+
   return (
-    <Routes>
-      {/* ✅ 기본 진입: 로그인 */}
-      <Route path="/" element={<Login />} />
+    <>
+      <Routes>
+        {/* ✅ 기본 진입: 로그인 */}
+        <Route path="/" element={<Login />} />
+        {/* ✅ 로그인/계정 */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/findid" element={<FindID />} />
+        <Route path="/findpw" element={<FindPassword />} />
+        <Route path="/easylogin" element={<EasyLogin />} />
+        {/* ✅ 메인 */}
+        <Route path="/main" element={<MainPage />} />
+        {/* ✅ 기업 진단 */}
+        <Route path="/diagnosis" element={<DiagnosisHome />} />
+        <Route path="/diagnosisinterview" element={<DiagnosisInterview />} />
+        <Route path="/diagnosis/result" element={<DiagnosisResult />} />
+        {/* ✅ 브랜드 컨설팅 메인 */}
+        <Route path="/brandconsulting" element={<BrandConsulting />} />
+        {/* ✅ 브랜드 컨설팅 인터뷰(권장 표준 라우트) */}
+        <Route
+          path="/brand/naming/interview"
+          element={<NamingConsultingInterview />}
+        />
+        <Route
+          path="/brand/concept/interview"
+          element={<ConceptConsultingInterview />}
+        />
+        <Route
+          path="/brand/story"
+          element={<BrandStoryConsultingInterview />}
+        />
+        <Route
+          path="/brand/story/interview"
+          element={<BrandStoryConsultingInterview />}
+        />{" "}
+        {/* ✅ alias */}
+        <Route
+          path="/brand/logo/interview"
+          element={<LogoConsultingInterview />}
+        />
+        {/* ✅ 기존 라우트(alias) 유지 */}
+        <Route path="/nameconsulting" element={<NamingConsultingInterview />} />
+        <Route
+          path="/namingconsulting"
+          element={<NamingConsultingInterview />}
+        />
+        <Route
+          path="/conceptconsulting"
+          element={<ConceptConsultingInterview />}
+        />
+        <Route
+          path="/homepageconsulting"
+          element={<ConceptConsultingInterview />}
+        />
+        <Route
+          path="/brand/homepage/interview"
+          element={<ConceptConsultingInterview />}
+        />{" "}
+        {/* legacy */}
+        <Route
+          path="/brandstoryconsulting"
+          element={<BrandStoryConsultingInterview />}
+        />
+        <Route path="/logoconsulting" element={<LogoConsultingInterview />} />
+        {/* ✅ 브랜드/홍보물 결과 단일 페이지 */}
+        <Route path="/brand/result" element={<BrandConsultingResult />} />
+        <Route path="/promotion/result" element={<PromotionResult />} />
+        {/* ✅ 통합 결과 페이지 */}
+        <Route path="/mypage/brand-results" element={<BrandAllResults />} />
+        <Route
+          path="/mypage/promotion-results"
+          element={<PromotionAllResults />}
+        />
+        {/* ✅ 홍보물 컨설팅 */}
+        <Route path="/promotion" element={<PromotionPage />} />
+        <Route
+          path="/promotion/icon/interview"
+          element={<ProductIconConsultingInterview />}
+        />
+        <Route
+          path="/promotion/aicut/interview"
+          element={<AICutModelConsultingInterview />}
+        />
+        <Route
+          path="/promotion/staging/interview"
+          element={<ProductStagingCutConsultingInterview />}
+        />
+        <Route
+          path="/promotion/poster/interview"
+          element={<SNSPosterConsultingInterview />}
+        />
+        {/* ✅ 마이페이지 */}
+        <Route path="/mypage" element={<MyPage />} />
+        {/* ✅ 투자 라운지 */}
+        <Route path="/investment" element={<InvestmentBoard />} />
+        <Route path="/investment/new" element={<InvestmentPostCreate />} />
+        <Route path="/investment/:id" element={<InvestmentPostDetail />} />
+        <Route path="/investment/edit/:id" element={<InvestmentPostEdit />} />
+        {/* ✅ 없는 경로는 메인으로 */}
+        <Route path="*" element={<Navigate to="/main" replace />} />
+      </Routes>
 
-      {/* ✅ 로그인/계정 */}
-      <Route path="/auth/login" element={<Login />} />
-      <Route path="/auth/register" element={<Signup />} />
-      <Route path="/findid" element={<FindID />} />
-      <Route path="/findpw" element={<FindPassword />} />
-      <Route path="/easylogin" element={<EasyLogin />} />
-
-      {/* ✅ 메인 */}
-      <Route path="/main" element={<MainPage />} />
-
-      {/* ✅ 기업 진단 */}
-      <Route path="/diagnosis" element={<DiagnosisHome />} />
-      <Route path="/diagnosisinterview" element={<DiagnosisInterview />} />
-
-      {/* ✅ 브랜드 컨설팅 메인 */}
-      <Route path="/brandconsulting" element={<BrandConsulting />} />
-
-      {/* ✅ 브랜드 컨설팅 인터뷰 (너가 쓰던 경로들 유지) */}
-      <Route path="/logoconsulting" element={<LogoConsultingInterview />} />
-      <Route path="/nameconsulting" element={<NamingConsultingInterview />} />
-      <Route
-        path="/homepageconsulting"
-        element={<HomepageConsultingInterview />}
-      />
-
-      {/* ✅ (선택) 별칭(alias)도 유지 */}
-      <Route path="/namingconsulting" element={<NamingConsultingInterview />} />
-      <Route
-        path="/brand/naming/interview"
-        element={<NamingConsultingInterview />}
-      />
-      <Route
-        path="/brand/logo/interview"
-        element={<LogoConsultingInterview />}
-      />
-      <Route
-        path="/brand/homepage/interview"
-        element={<HomepageConsultingInterview />}
-      />
-
-      {/* ✅ 홍보물 컨설팅 */}
-      <Route path="/promotion" element={<PromotionPage />} />
-
-      <Route path="/mypage" element={<MyPage />} />
-
-      <Route
-        path="/promotion/digital/interview"
-        element={<DigitalImageConsultingInterview />}
-      />
-      <Route
-        path="/promotion/offline/interview"
-        element={<OfflineImageConsultingInterview />}
-      />
-      <Route
-        path="/promotion/video/interview"
-        element={<PromoVideoConsultingInterview />}
-      />
-
-      <Route path="/diagnosis/result" element={<DiagnosisResult />} />
-      <Route path="/promotion/result" element={<PromotionResult />} />
-
-      <Route path="/brand/result" element={<BrandConsultingResult />} />
-
-      <Route path="/brands/posts" element={<InvestmentBoard />} />
-      {/* 
-      2026-01-20
-      등록페이지, 수정페이지 추가
-      2026-01-21
-      상세페이지 추가
-      */}
-      <Route path="/brands/posts/new" element={<InvestmentPostCreate />} />
-      <Route path="/brands/posts/:id/edit" element={<InvestmentPostEdit />} />
-      <Route path="/brands/posts/:id" element={<InvestmentPostDetail />} />
-
-      {/* ✅ 없는 경로는 메인으로 */}
-      <Route path="*" element={<Navigate to="/main" replace />} />
-    </Routes>
+      {/* ✅ 챗봇은 라우트 아래에 떠 있게 */}
+      {!shouldHideChatbot && (
+        <ChatbotWidget title="AI 도우미" subtitle="무엇을 도와드릴까요?" />
+      )}
+    </>
   );
 }

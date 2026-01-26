@@ -1,5 +1,6 @@
 ﻿import axios from "axios";
 
+// ✅ 기본값: 로컬 백엔드(환경변수 없을 때)
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, "") ||
   "http://localhost:8080";
@@ -38,6 +39,7 @@ export const apiClient = axios.create({
   },
 });
 
+// ✅ 요청에 토큰 자동 첨부
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token && !config.headers?.Authorization) {
@@ -49,6 +51,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// ✅ 에러 메시지 통일
 apiClient.interceptors.response.use(
   (response) => {
     const authHeader =

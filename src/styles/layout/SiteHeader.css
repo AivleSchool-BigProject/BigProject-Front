@@ -1,0 +1,169 @@
+/* src/styles/layout/SiteHeader.css */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
+
+:root {
+  --navy: #001f66;
+  --ink: #0f172a;
+  --muted: #5b6476;
+  --line: #e6e9f1;
+  --accent: #1766e5;
+}
+
+/* ===== Header ===== */
+.main-header {
+  background: var(--navy);
+  color: #fff;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 28px;
+  padding: 18px 32px;
+}
+
+.brand {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.main-nav,
+.account-nav {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.nav-link {
+  border: none;
+  background: transparent;
+  color: #e5e9f7;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 2px;
+}
+
+.nav-link:hover {
+  color: #ffffff;
+}
+
+.nav-link.is-active {
+  color: #ffffff;
+  position: relative;
+}
+
+.nav-link.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 99px;
+}
+
+/* ===== Dropdown ===== */
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 1. 삼각형 기본 상태 설정 */
+.nav-dropdown__chev {
+  font-size: 12px;
+  opacity: 0.9;
+  display: inline-block;        /* 필수: 회전이 가능하도록 설정 */
+  transition: transform 0.25s ease-in-out; /* 부드럽게 움직이는 시간 */
+}
+
+/* 2. 활성화 시 삼각형 회전 (Hover 혹은 클래스 주입 시) */
+.nav-dropdown:hover .nav-dropdown__chev,
+.nav-dropdown.is-open .nav-dropdown__chev {
+  transform: rotate(180deg);    /* 180도 뒤집기 */
+}
+
+.nav-dropdown__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  min-width: 220px;
+
+  background: rgba(245, 247, 255, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  border: 1px solid rgba(60, 80, 120, 0.18);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+
+  display: none;
+  z-index: 50;
+}
+
+.nav-dropdown.is-open .nav-dropdown__panel {
+  display: grid;
+  gap: 6px;
+}
+
+.nav-dropdown__item {
+  border: none;
+  background: rgba(255, 255, 255, 0.55);
+  text-align: left;
+  padding: 10px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.nav-dropdown__item:hover {
+  background: rgba(245, 247, 255, 0.88);
+}
+
+/* ✅ 섹션/바로가기(브랜드 드롭다운과 동일 스타일) */
+.nav-dropdown__divider {
+  height: 1px;
+  background: rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  margin: 6px 4px;
+}
+
+.nav-dropdown__section-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(15, 23, 42, 0.55);
+  padding: 6px 10px 2px;
+  letter-spacing: 0.02em;
+}
+
+.nav-dropdown__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 2px;
+}
+
+.nav-dropdown__item--mini {
+  padding: 9px 10px;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 980px) {
+  .main-header {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}

@@ -1,0 +1,17 @@
+/* src/styles/BrandStoryConsultingInterview.css */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
+.brandStoryInterview .diagInterview__sub {
+  line-height: 1.5;
+}
+
+.brandStoryInterview .helper {
+  display: block;
+  margin-top: 6px;
+  opacity: 0.75;
+  font-size: 12px;
+}
+
+.brandStoryInterview textarea {
+  resize: vertical;
+  min-height: 92px;
+}

@@ -1,40 +1,3 @@
-// // src/main.jsx
-// import React from "react";
-// import ReactDOM from "react-dom/client";
-// import { BrowserRouter } from "react-router-dom";
-// import App from "./App.jsx";
-
-// /** ✅ 전역/라이브러리 CSS는 여기서 한 번만 import */
-// import "react-datepicker/dist/react-datepicker.css";
-
-// /** ✅ 전역 CSS(원하면 여기서 한 번에 관리) */
-// import "./styles/Login.css";
-// import "./styles/Signup.css";
-// import "./styles/FindID.css";
-// import "./styles/FindPassword.css";
-// import "./styles/MainPage.css";
-// import "./styles/BrandConsulting.css";
-
-// import "./styles/DiagnosisHome.css";
-// import "./styles/PolicyModal.css";
-// import "./styles/EasyLogin.css";
-// import "./styles/EasyLoginModal.css";
-// import "./styles/SiteFooter.css";
-// import "./styles/DiagnosisInterview.css";
-// import "./styles/SiteFooter.css";
-// import "./styles/SiteHeader.css";
-
-// import "./styles/HomepageConsultingInterview.css";
-// import "./styles/Promotion.css";
-
-// ReactDOM.createRoot(document.getElementById("root")).render(
-//   <React.StrictMode>
-//     <BrowserRouter>
-//       <App />
-//     </BrowserRouter>
-//   </React.StrictMode>
-// );
-
 // src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -45,46 +8,50 @@ import App from "./App.jsx";
 import "react-datepicker/dist/react-datepicker.css";
 
 /** ✅ 전역 CSS */
-import "./styles/Login.css";
-import "./styles/Signup.css";
-import "./styles/FindID.css";
-import "./styles/FindPassword.css";
-import "./styles/MainPage.css";
-import "./styles/BrandConsulting.css";
+import "./styles/auth/Login.css";
+import "./styles/auth/Signup.css";
+import "./styles/auth/FindID.css";
+import "./styles/auth/FindPassword.css";
+import "./styles/main/MainPage.css";
+import "./styles/brand/BrandConsulting.css";
 
-import "./styles/DiagnosisHome.css";
-import "./styles/DiagnosisInterview.css";
+import "./styles/diagnosis/DiagnosisHome.css";
+import "./styles/diagnosis/DiagnosisInterview.css";
 
-import "./styles/EasyLogin.css";
-import "./styles/EasyLoginModal.css";
+import "./styles/auth/EasyLogin.css";
+import "./styles/auth/EasyLoginModal.css";
 
-import "./styles/PolicyModal.css";
-import "./styles/SiteHeader.css";
-import "./styles/SiteFooter.css";
+import "./styles/policy/PolicyModal.css";
 
-import "./styles/NamingConsultingInterview.css";
-import "./styles/LogoConsultingInterview.css";
-import "./styles/HomepageConsultingInterview.css";
+import "./styles/layout/SiteHeader.css";
+import "./styles/layout/SiteFooter.css";
 
-import "./styles/Promotion.css";
+import "./styles/brand/NamingConsultingInterview.css";
+import "./styles/brand/LogoConsultingInterview.css";
+import "./styles/brand/ConceptConsultingInterview.css";
+import "./styles/flow/ConsultingFlowPanel.css";
 
-import "./styles/MyPage.css";
+import "./styles/promotion/Promotion.css";
 
-import "./styles/DigitalImageConsultingInterview.css";
-import "./styles/OfflineImageConsultingInterview.css";
-import "./styles/PromoVideoConsultingInterview.css";
+import "./styles/mypage/MyPage.css";
 
-import "./styles/DiagnosisResult.css";
-import "./styles/PromotionResult.css";
-import "./styles/BrandConsultingResult.css";
+import "./styles/brand/BrandConsulting.css";
 
-import "./styles/InvestmentBoard.css";
-// 2026-01-20
-// 등록, 수정 페이지 css 추가
-import "./styles/InvestmentPostCreate.css";
-// 2026-01-21
-// 상세페이지 css 추가
-import "./styles/InvestmentPostDetail.css";
+import "./styles/diagnosis/DiagnosisResult.css";
+import "./styles/promotion/PromotionResult.css";
+import "./styles/brand/BrandConsultingResult.css";
+
+import "./styles/investment/InvestmentBoard.css";
+import "./styles/investment/InvestmentPostCreate.css";
+import "./styles/investment/InvestmentPostDetail.css";
+
+import "./styles/brand/BrandStoryConsultingInterview.css";
+
+import "./styles/brand/BrandAllResults.css";
+
+import "./styles/promotion/PromotionAllResults.css";
+
+import "./styles/chatbot/ChatbotWidget.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
