@@ -24,7 +24,7 @@ import {
 // ====================================================
 // [BACKEND 연동] import
 // ====================================================
-// import { apiRequest } from "../../api/client.js";
+import { apiRequest } from "../../api/client.js";
 
 const STORAGE_KEY = "namingConsultingInterviewDraft_v1";
 const RESULT_KEY = "namingConsultingInterviewResult_v1";
@@ -35,14 +35,14 @@ function safeText(v, fallback = "") {
   return s ? s : fallback;
 }
 
-function pickKeywords(text, max = 8) {
-  const raw = String(text || "")
-    .split(/[,\n\t]/g)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const uniq = Array.from(new Set(raw));
-  return uniq.slice(0, max);
-}
+// function pickKeywords(text, max = 8) {
+//   const raw = String(text || "")
+//     .split(/[,\n\t]/g)
+//     .map((s) => s.trim())
+//     .filter(Boolean);
+//   const uniq = Array.from(new Set(raw));
+//   return uniq.slice(0, max);
+// }
 
 function stageLabel(v) {
   const s = String(v || "")
@@ -59,171 +59,248 @@ function stageLabel(v) {
   return String(v);
 }
 
-/** ✅ 네이밍 후보 더미 생성(프론트 테스트용) */
-function generateNamingCandidates(form, seed = 0) {
-  const industry = safeText(form?.industry, "분야");
-  const target = safeText(form?.targetCustomer, "고객");
+// =============================================
+// [BACKEND 연동] 후보 정규화 함수 추가
+// =============================================
+function mapServerNamingObjectToCandidates(obj) {
+  if (!obj || typeof obj !== "object") return [];
 
-  const namingStyles = Array.isArray(form?.namingStyles)
-    ? form.namingStyles
-    : [];
-  const languagePrefs = Array.isArray(form?.languagePrefs)
-    ? form.languagePrefs
-    : [];
-  const brandVibe = safeText(form?.brandVibe, "좋은 첫인상");
-  const mustKws = pickKeywords(form?.mustHaveKeywords, 10);
-  const avoid = pickKeywords(form?.avoidStyle, 8);
-  const emotion = safeText(form?.targetEmotion, "신뢰");
-  const domainNeed = safeText(form?.domainConstraint, "Don't care");
+  // 서버가 name1~name3 형태로 주는 케이스 대응
+  const names = [
+    obj.name1,
+    obj.name2,
+    obj.name3,
+  ].filter((v) => typeof v === "string" && v.trim());
 
-  const pick = (arr, idx) => arr[(idx + seed) % arr.length];
+  // 혹시 nameA/nameB/nameC 같은 변형도 대비
+  if (names.length === 0) {
+    const alt = ["nameA", "nameB", "nameC"]
+      .map((k) => obj[k])
+      .filter((v) => typeof v === "string" && v.trim());
+    if (alt.length > 0) return alt.map((n, i) => ({
+      id: `server-${i}`,
+      name: n,
+      selectedNameForServer: n,
+      oneLiner: "",
+      keywords: [],
+      samples: [],
+      rationale: "",
+      checks: [],
+      avoid: [],
+      _raw: obj,
+    }));
+  }
 
-  const baseRootsKo = [
-    "코어",
-    "루트",
-    "웨이브",
-    "스파크",
-    "포지",
-    "루프",
-    "플랜",
-    "브릿지",
-    "라이트",
-    "노바",
-  ];
-  const baseRootsEn = [
-    "Core",
-    "Root",
-    "Wave",
-    "Spark",
-    "Forge",
-    "Loop",
-    "Plan",
-    "Bridge",
-    "Bright",
-    "Nova",
-  ];
-
-  const mkKo = (prefix, root, suffix = "") =>
-    `${prefix}${root}${suffix}`.replace(/\s+/g, "");
-  const mkEn = (prefix, root, suffix = "") =>
-    `${prefix}${root}${suffix}`.replace(/\s+/g, "");
-
-  const getMode = () => {
-    const hasKo = languagePrefs.includes("Korean");
-    const hasEn = languagePrefs.includes("English");
-    const hasAny = languagePrefs.includes("Any");
-    if (hasAny || (hasKo && hasEn)) return "mix";
-    if (hasEn) return "en";
-    return "ko";
-  };
-
-  const makeSamples = (mode) => {
-    const pKo = pick(["", "뉴", "프로", "메타", "브랜드"], 0);
-    const sKo = pick(["", "온", "랩", "웍스", "플랜"], 1);
-    const pEn = pick(["", "Neo", "Pro", "Meta", "Bright"], 0);
-    const sEn = pick(["", "ly", "io", "lab", "works"], 1);
-
-    const list = [];
-    const makeKoList = () => {
-      for (let i = 0; i < 6; i += 1)
-        list.push(mkKo(pKo, pick(baseRootsKo, i), sKo));
-    };
-    const makeEnList = () => {
-      for (let i = 0; i < 6; i += 1)
-        list.push(mkEn(pEn, pick(baseRootsEn, i), sEn));
-    };
-
-    if (mode === "en") makeEnList();
-    else if (mode === "ko") makeKoList();
-    else {
-      makeKoList();
-      makeEnList();
-    }
-
-    return Array.from(new Set(list)).slice(0, 8);
-  };
-
-  const mode = getMode();
-  const styleText =
-    namingStyles.length > 0 ? namingStyles.join(" · ") : "Style";
-
-  const commonKeywords = Array.from(
-    new Set([
-      emotion,
-      brandVibe,
-      ...mustKws.slice(0, 4),
-      ...namingStyles.slice(0, 3),
-    ]),
-  ).slice(0, 10);
-
-  const samples = makeSamples(mode);
-
-  const candidates = [
-    {
-      id: "nameA",
-      name: "A · 직관/설명형 중심",
-      oneLiner: "들으면 바로 이해되는, 설명력 있는 네이밍 방향",
-      keywords: Array.from(new Set(["Descriptive", ...commonKeywords])).slice(
-        0,
-        10,
-      ),
-      style: styleText,
-      samples: samples.slice(0, 6),
-      rationale: `업종(${industry})에서 ‘무슨 서비스인지’를 빠르게 전달하는 방향입니다. 타깃(${target})에게 첫인상(${brandVibe})을 우선으로 맞춥니다.`,
-      checks: [
-        "의미가 과도하게 길어지지 않게 길이 제한",
-        domainNeed === "Must have .com"
-          ? ".com 도메인 확보 가능성(사전 조사) 권장"
-          : "도메인 제약은 낮게 설정(상표/검색 중복 체크 권장)",
-      ],
-      avoid,
-    },
-    {
-      id: "nameB",
-      name: "B · 함축/상징형 중심",
-      oneLiner: "의미를 ‘한 단계’ 숨겨 기억에 남는 네이밍 방향",
-      keywords: Array.from(new Set(["Symbolic", ...commonKeywords])).slice(
-        0,
-        10,
-      ),
-      style: styleText,
-      samples: samples
-        .map((s) => (mode === "en" ? `Myth${s}` : `미스${s}`))
-        .slice(0, 6),
-      rationale: `브랜드 감정(${emotion})을 우선으로, 한 번 들으면 남는 ‘상징성’을 강화합니다. 소개 문구와 함께 쓰면 이해도도 보완됩니다.`,
-      checks: [
-        "서비스 오해가 없도록 서브카피/슬로건 병행 권장",
-        domainNeed === "Must have .com"
-          ? ".com 확보 가능성(사전 조사) 권장"
-          : "도메인 제약 낮음(검색 중복 체크 권장)",
-      ],
-      avoid,
-    },
-    {
-      id: "nameC",
-      name: "C · 합성/신조어형 중심",
-      oneLiner: "확장성과 고유성을 노리는 합성/신조어 네이밍 방향",
-      keywords: Array.from(new Set(["Abstract", ...commonKeywords])).slice(
-        0,
-        10,
-      ),
-      style: styleText,
-      samples: samples
-        .map((s) => (mode === "en" ? `${s}via` : `${s}비아`))
-        .slice(0, 6),
-      rationale: `고유성(검색/상표) 측면에서 유리한 방향입니다. 시장 확장 시에도 의미를 넓히기 쉽습니다.`,
-      checks: [
-        "발음 난이도/철자 혼동 점검",
-        domainNeed === "Must have .com"
-          ? ".com 확보 가능성(사전 조사) 권장"
-          : "도메인 제약 낮음(검색 중복 체크 권장)",
-      ],
-      avoid,
-    },
-  ];
-
-  return candidates.slice(0, 3);
+  return names.map((n, i) => ({
+    id: `server-${i}`,
+    name: n,
+    selectedNameForServer: n, // ✅ select API에 그대로 보낼 값
+    oneLiner: "",
+    keywords: [],
+    samples: [],
+    rationale: "",
+    checks: [],
+    avoid: [],
+    _raw: obj,
+  }));
 }
+
+function normalizeNamingCandidates(raw) {
+  const arr = Array.isArray(raw) ? raw : [];
+
+  return arr.map((item, idx) => {
+    // 후보 이름(서버 저장에도 사용할 값)
+    const selectedName =
+      item?.name ?? item?.title ?? item?.selectedName ?? item?.naming ?? "";
+
+    return {
+      id: item?.id ?? `server-${idx}`,
+      name: String(selectedName || `후보 ${idx + 1}`),
+      oneLiner: item?.oneLiner ?? item?.summary ?? item?.desc ?? "",
+      keywords: Array.isArray(item?.keywords)
+        ? item.keywords
+        : Array.isArray(item?.tags)
+          ? item.tags
+          : [],
+      samples: Array.isArray(item?.samples)
+        ? item.samples
+        : Array.isArray(item?.examples)
+          ? item.examples
+          : [],
+      rationale: item?.rationale ?? item?.reason ?? "",
+      checks: Array.isArray(item?.checks) ? item.checks : [],
+      avoid: Array.isArray(item?.avoid) ? item.avoid : [],
+      selectedNameForServer: String(selectedName || ""),
+      _raw: item,
+    };
+  });
+}
+
+// /** ✅ 네이밍 후보 더미 생성(프론트 테스트용) */
+// function generateNamingCandidates(form, seed = 0) {
+//   const industry = safeText(form?.industry, "분야");
+//   const target = safeText(form?.targetCustomer, "고객");
+
+//   const namingStyles = Array.isArray(form?.namingStyles)
+//     ? form.namingStyles
+//     : [];
+//   const languagePrefs = Array.isArray(form?.languagePrefs)
+//     ? form.languagePrefs
+//     : [];
+//   const brandVibe = safeText(form?.brandVibe, "좋은 첫인상");
+//   const mustKws = pickKeywords(form?.mustHaveKeywords, 10);
+//   const avoid = pickKeywords(form?.avoidStyle, 8);
+//   const emotion = safeText(form?.targetEmotion, "신뢰");
+//   const domainNeed = safeText(form?.domainConstraint, "Don't care");
+
+//   const pick = (arr, idx) => arr[(idx + seed) % arr.length];
+
+//   const baseRootsKo = [
+//     "코어",
+//     "루트",
+//     "웨이브",
+//     "스파크",
+//     "포지",
+//     "루프",
+//     "플랜",
+//     "브릿지",
+//     "라이트",
+//     "노바",
+//   ];
+//   const baseRootsEn = [
+//     "Core",
+//     "Root",
+//     "Wave",
+//     "Spark",
+//     "Forge",
+//     "Loop",
+//     "Plan",
+//     "Bridge",
+//     "Bright",
+//     "Nova",
+//   ];
+
+//   const mkKo = (prefix, root, suffix = "") =>
+//     `${prefix}${root}${suffix}`.replace(/\s+/g, "");
+//   const mkEn = (prefix, root, suffix = "") =>
+//     `${prefix}${root}${suffix}`.replace(/\s+/g, "");
+
+//   const getMode = () => {
+//     const hasKo = languagePrefs.includes("Korean");
+//     const hasEn = languagePrefs.includes("English");
+//     const hasAny = languagePrefs.includes("Any");
+//     if (hasAny || (hasKo && hasEn)) return "mix";
+//     if (hasEn) return "en";
+//     return "ko";
+//   };
+
+//   const makeSamples = (mode) => {
+//     const pKo = pick(["", "뉴", "프로", "메타", "브랜드"], 0);
+//     const sKo = pick(["", "온", "랩", "웍스", "플랜"], 1);
+//     const pEn = pick(["", "Neo", "Pro", "Meta", "Bright"], 0);
+//     const sEn = pick(["", "ly", "io", "lab", "works"], 1);
+
+//     const list = [];
+//     const makeKoList = () => {
+//       for (let i = 0; i < 6; i += 1)
+//         list.push(mkKo(pKo, pick(baseRootsKo, i), sKo));
+//     };
+//     const makeEnList = () => {
+//       for (let i = 0; i < 6; i += 1)
+//         list.push(mkEn(pEn, pick(baseRootsEn, i), sEn));
+//     };
+
+//     if (mode === "en") makeEnList();
+//     else if (mode === "ko") makeKoList();
+//     else {
+//       makeKoList();
+//       makeEnList();
+//     }
+
+//     return Array.from(new Set(list)).slice(0, 8);
+//   };
+
+//   const mode = getMode();
+//   const styleText =
+//     namingStyles.length > 0 ? namingStyles.join(" · ") : "Style";
+
+//   const commonKeywords = Array.from(
+//     new Set([
+//       emotion,
+//       brandVibe,
+//       ...mustKws.slice(0, 4),
+//       ...namingStyles.slice(0, 3),
+//     ]),
+//   ).slice(0, 10);
+
+//   const samples = makeSamples(mode);
+
+//   const candidates = [
+//     {
+//       id: "nameA",
+//       name: "A · 직관/설명형 중심",
+//       oneLiner: "들으면 바로 이해되는, 설명력 있는 네이밍 방향",
+//       keywords: Array.from(new Set(["Descriptive", ...commonKeywords])).slice(
+//         0,
+//         10,
+//       ),
+//       style: styleText,
+//       samples: samples.slice(0, 6),
+//       rationale: `업종(${industry})에서 ‘무슨 서비스인지’를 빠르게 전달하는 방향입니다. 타깃(${target})에게 첫인상(${brandVibe})을 우선으로 맞춥니다.`,
+//       checks: [
+//         "의미가 과도하게 길어지지 않게 길이 제한",
+//         domainNeed === "Must have .com"
+//           ? ".com 도메인 확보 가능성(사전 조사) 권장"
+//           : "도메인 제약은 낮게 설정(상표/검색 중복 체크 권장)",
+//       ],
+//       avoid,
+//     },
+//     {
+//       id: "nameB",
+//       name: "B · 함축/상징형 중심",
+//       oneLiner: "의미를 ‘한 단계’ 숨겨 기억에 남는 네이밍 방향",
+//       keywords: Array.from(new Set(["Symbolic", ...commonKeywords])).slice(
+//         0,
+//         10,
+//       ),
+//       style: styleText,
+//       samples: samples
+//         .map((s) => (mode === "en" ? `Myth${s}` : `미스${s}`))
+//         .slice(0, 6),
+//       rationale: `브랜드 감정(${emotion})을 우선으로, 한 번 들으면 남는 ‘상징성’을 강화합니다. 소개 문구와 함께 쓰면 이해도도 보완됩니다.`,
+//       checks: [
+//         "서비스 오해가 없도록 서브카피/슬로건 병행 권장",
+//         domainNeed === "Must have .com"
+//           ? ".com 확보 가능성(사전 조사) 권장"
+//           : "도메인 제약 낮음(검색 중복 체크 권장)",
+//       ],
+//       avoid,
+//     },
+//     {
+//       id: "nameC",
+//       name: "C · 합성/신조어형 중심",
+//       oneLiner: "확장성과 고유성을 노리는 합성/신조어 네이밍 방향",
+//       keywords: Array.from(new Set(["Abstract", ...commonKeywords])).slice(
+//         0,
+//         10,
+//       ),
+//       style: styleText,
+//       samples: samples
+//         .map((s) => (mode === "en" ? `${s}via` : `${s}비아`))
+//         .slice(0, 6),
+//       rationale: `고유성(검색/상표) 측면에서 유리한 방향입니다. 시장 확장 시에도 의미를 넓히기 쉽습니다.`,
+//       checks: [
+//         "발음 난이도/철자 혼동 점검",
+//         domainNeed === "Must have .com"
+//           ? ".com 확보 가능성(사전 조사) 권장"
+//           : "도메인 제약 낮음(검색 중복 체크 권장)",
+//       ],
+//       avoid,
+//     },
+//   ];
+
+//   return candidates.slice(0, 3);
+// }
 
 // ✅ 네이밍 질문 옵션
 const NAMING_STYLE_OPTIONS = [
@@ -271,18 +348,18 @@ export default function NamingConsultingInterview({ onLogout }) {
 // [BACKEND 연동] brandId 확보 (기업진단 결과에서 가져오기)
 // ================================================================
 
-// const [brandId, setBrandId] = useState(null);
+const [brandId, setBrandId] = useState(null);
 
-// useEffect(() => {
-//   try {
-//     const raw = localStorage.getItem("diagnosisResult_v1"); // 기업진단에서 저장한 키
-//     if (!raw) return;
-//     const parsed = JSON.parse(raw);
-//     if (parsed?.brandId) setBrandId(parsed.brandId);
-//   } catch {
-//     // ignore
-//   }
-// }, []);
+useEffect(() => {
+  try {
+    const raw = localStorage.getItem("diagnosisResult_v1"); // 기업진단에서 저장한 키
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed?.brandId) setBrandId(parsed.brandId);
+  } catch {
+    // ignore
+  }
+}, []);
 
 
   // ✅ 약관/방침 모달
@@ -554,109 +631,108 @@ export default function NamingConsultingInterview({ onLogout }) {
   };
 
   // =====================================================
-  // [BACKEND 연동]
+  // [BACKEND 연동] AI 후보 생성 버튼 전체 동작 로직
   // =====================================================
   const handleGenerateCandidates = async (mode = "generate") => {
-    if (!canAnalyze) {
-      alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
-      return;
+  if (!canAnalyze) {
+    alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
+    return;
+  }
+
+  if (!brandId) {
+    alert("brandId가 없어 네이밍 요청을 보낼 수 없습니다. 기업진단을 먼저 완료해주세요.");
+    return;
+  }
+
+  setAnalyzing(true);
+  try {
+    const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
+    if (mode === "regen") setRegenSeed(nextSeed);
+
+    await new Promise((r) => setTimeout(r, 350));
+
+    const payload = {
+      namingStyles: form.namingStyles,
+      languagePrefs: form.languagePrefs,
+      mustHaveKeywords: form.mustHaveKeywords,
+      brandVibe: form.brandVibe,
+      avoidStyle: form.avoidStyle,
+      domainConstraint: form.domainConstraint,
+      targetEmotion: form.targetEmotion,
+    };
+
+    const result = await apiRequest(`/brands/${brandId}/naming`, {
+      method: "POST",
+      data: payload,
+    });
+
+    console.log("naming api result:", result);
+
+    let nextCandidates = [];
+
+    const rawArr =
+      result?.candidates ??
+      result?.suggestions ??
+      result?.namings ??
+      result?.results;
+
+    if (Array.isArray(rawArr)) {
+      nextCandidates = normalizeNamingCandidates(rawArr);
+    } else {
+      nextCandidates = mapServerNamingObjectToCandidates(result);
     }
 
-    setAnalyzing(true);
-    try {
-      const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
-      if (mode === "regen") setRegenSeed(nextSeed);
+    setCandidates(nextCandidates);
+    setSelectedId(null);
+    persistResult(nextCandidates, null, nextSeed);
+    scrollToResult();
+  } catch (e) {
+    console.error(e);
+    alert("네이밍 후보 생성에 실패했습니다. 다시 시도해주세요.");
+  } finally {
+    setAnalyzing(false);
+  }
+};
 
-      await new Promise((r) => setTimeout(r, 350));
-      
-      // =================================================
-      // mock : 연동 시 삭제
-      // =================================================
-      const nextCandidates = generateNamingCandidates(form, nextSeed);
-
-      // ============================================================
-      // [BACKEND 연동] 네이밍 후보 생성 요청
-      // endpoint: POST /brands/{brandId}/naming
-      // request: form 기반 payload
-      // response: 후보 3안 리스트
-      // ============================================================
-
-      // if (!brandId) {
-      //   alert("brandId가 없어 네이밍 요청을 보낼 수 없습니다. 기업진단을 먼저 완료해주세요.");
-      //   return;
-      // }
-
-      // const payload = {
-      //   namingStyles: form.namingStyles,
-      //   languagePrefs: form.languagePrefs,
-      //   mustHaveKeywords: form.mustHaveKeywords,
-      //   brandVibe: form.brandVibe,
-      //   avoidStyle: form.avoidStyle,
-      //   domainConstraint: form.domainConstraint,
-      //   targetEmotion: form.targetEmotion,
-      //   // 필요하면 진단값도 추가: industry, targetCustomer 등
-      // };
-
-      // const result = await apiRequest(`/brands/${brandId}/naming`, {
-      //   method: "POST",
-      //   data: payload,
-      // });
-
-      // const nextCandidates = result?.candidates ?? result?.suggestions ?? [];
-
-      setCandidates(nextCandidates);
-      setSelectedId(null);
-      persistResult(nextCandidates, null, nextSeed);
-      scrollToResult();
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
-  // 백엔드 연동 시 수정 필요
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
   };
-  // const handleSelectCandidate = async (id) => {
-  //   setSelectedId(id);
-  //   persistResult(candidates, id, regenSeed);
 
-    // ============================================================
-    // [BACKEND 연동] 네이밍 선택 저장
-    // - (백엔드 스펙 나오면 endpoint/method/body 확정)
-    // - 예: POST /brands/{brandId}/naming/selection
-    // ============================================================
 
-    // try {
-    //   if (!brandId) return;
-    //   const selected = candidates.find((c) => c.id === id);
-    //   await apiRequest(`/brands/${brandId}/naming/selection`, {
-    //     method: "POST",
-    //     data: {
-    //       selectedId: id,
-    //       selectedName: selected?.name,
-    //       // 필요 시 selected 전체를 보내거나, 핵심만 보내기
-    //     },
-    //   });
-    // } catch (err) {
-    //   console.error(err);
-    //   // 저장 실패 시 UX를 어떻게 할지(경고/롤백) 팀 합의 필요
-    // }
-  // };
 // ============================================================
 // [BACKEND 연동] 네이밍 선택 저장
-// 만약 “저장 버튼이 따로 생긴다”면
-// handleSelectCandidate에는 저장 API를 넣지 않고,
-// 새로 handleSaveSelection()을 만들어서 버튼 onClick에 연결
+// 컨셉 단계로 이동 버튼을 누를 시 저장
 // ============================================================
-  
+  const handleGoNext = async () => {
+  if (!canGoNext) return;
+  if (!brandId) {
+    alert("brandId가 없습니다. 기업진단을 먼저 완료해주세요.");
+    return;
+  }
 
-  const handleGoNext = () => {
-    if (!canGoNext) return;
+  const selected = candidates.find((c) => c.id === selectedId);
+  const selectedName =
+    selected?.selectedNameForServer ?? selected?.name ?? "";
+
+  if (!selectedName) {
+    alert("선택한 네이밍 값을 찾을 수 없습니다.");
+    return;
+  }
+
+  try {
+    await apiRequest(`/brands/${brandId}/naming/select`, {
+      method: "POST",
+      data: { selectedName },
+    });
+
     navigate("/brand/concept/interview");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  } catch (e) {
+    console.error(e);
+    alert("네이밍 선택 저장에 실패했습니다. 다시 시도해주세요.");
+  }
+};
 
   const handleResetAll = () => {
     const ok = window.confirm(

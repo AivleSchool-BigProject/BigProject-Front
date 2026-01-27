@@ -209,6 +209,11 @@ const INITIAL_FORM = {
   oneLine: "",
   targetCustomer: "",
   referenceLink: "",
+  // ============================================
+  // 2026-01-27
+  // 선택한 네이밍 자동 반영용
+  // ============================================
+  selectedNaming: "", 
 
   // ✅ Step 3. 브랜드 컨셉/톤 (편집 O)
   core_values: [], // multiple
@@ -369,6 +374,38 @@ export default function ConceptConsultingInterview({ onLogout }) {
       // ignore
     }
   }, []);
+  
+  // ===========================================================
+  // 2026-01-27 
+  // 네이밍 단계에서 선택한 네이밍 자동 반영
+  // ===========================================================
+  const NAMING_RESULT_KEY = "namingConsultingInterviewResult_v1"; // 네이밍 RESULT_KEY
+  
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(NAMING_RESULT_KEY);
+      if (!raw) return;
+      
+      const parsed = JSON.parse(raw);
+      // 네이밍 페이지 persistResult 구조: { candidates, selectedId, ... }
+      const candidates = Array.isArray(parsed?.candidates) ? parsed.candidates : [];
+      const selectedId = parsed?.selectedId;
+      
+      const selected = candidates.find((c) => c.id === selectedId);
+      const selectedName =
+      selected?.selectedNameForServer ?? selected?.name ?? "";
+      
+      if (!selectedName) return;
+      
+      setForm((prev) => ({
+        ...prev,
+        selectedNaming: selectedName,
+      }));
+    
+    } catch {
+      // ignore
+      }
+    }, []);
 
   // ✅ 결과 로드(후보/선택)
   useEffect(() => {
@@ -535,6 +572,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
     setLastSaved("-");
   };
 
+  // =========================================
+  // UI 관련
+  // =========================================
   return (
     <div className="diagInterview consultingInterview">
       <PolicyModal
