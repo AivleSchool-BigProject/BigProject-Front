@@ -432,5 +432,3 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
     </header>
   );
 }
-
-
