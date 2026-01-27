@@ -21,6 +21,11 @@ import {
   upsertPipeline,
 } from "../../utils/brandPipelineStorage.js"
 
+// ====================================================
+// [BACKEND 연동] import
+// ====================================================
+// import { apiRequest } from "../../api/client.js";
+
 const STORAGE_KEY = "namingConsultingInterviewDraft_v1";
 const RESULT_KEY = "namingConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_naming_v1";
@@ -261,6 +266,24 @@ const INITIAL_FORM = {
 
 export default function NamingConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
+
+// ================================================================
+// [BACKEND 연동] brandId 확보 (기업진단 결과에서 가져오기)
+// ================================================================
+
+// const [brandId, setBrandId] = useState(null);
+
+// useEffect(() => {
+//   try {
+//     const raw = localStorage.getItem("diagnosisResult_v1"); // 기업진단에서 저장한 키
+//     if (!raw) return;
+//     const parsed = JSON.parse(raw);
+//     if (parsed?.brandId) setBrandId(parsed.brandId);
+//   } catch {
+//     // ignore
+//   }
+// }, []);
+
 
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
@@ -530,6 +553,9 @@ export default function NamingConsultingInterview({ onLogout }) {
     }
   };
 
+  // =====================================================
+  // [BACKEND 연동]
+  // =====================================================
   const handleGenerateCandidates = async (mode = "generate") => {
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
@@ -642,6 +668,9 @@ export default function NamingConsultingInterview({ onLogout }) {
     setLastSaved("-");
   };
 
+  // ====================================================
+  // [UI 관련]
+  // ====================================================
   return (
     <div className="diagInterview consultingInterview">
       <PolicyModal
