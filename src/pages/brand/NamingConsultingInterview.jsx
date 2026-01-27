@@ -568,7 +568,41 @@ export default function NamingConsultingInterview({ onLogout }) {
       if (mode === "regen") setRegenSeed(nextSeed);
 
       await new Promise((r) => setTimeout(r, 350));
+      
+      // =================================================
+      // mock : 연동 시 삭제
+      // =================================================
       const nextCandidates = generateNamingCandidates(form, nextSeed);
+
+      // ============================================================
+      // [BACKEND 연동] 네이밍 후보 생성 요청
+      // endpoint: POST /brands/{brandId}/naming
+      // request: form 기반 payload
+      // response: 후보 3안 리스트
+      // ============================================================
+
+      // if (!brandId) {
+      //   alert("brandId가 없어 네이밍 요청을 보낼 수 없습니다. 기업진단을 먼저 완료해주세요.");
+      //   return;
+      // }
+
+      // const payload = {
+      //   namingStyles: form.namingStyles,
+      //   languagePrefs: form.languagePrefs,
+      //   mustHaveKeywords: form.mustHaveKeywords,
+      //   brandVibe: form.brandVibe,
+      //   avoidStyle: form.avoidStyle,
+      //   domainConstraint: form.domainConstraint,
+      //   targetEmotion: form.targetEmotion,
+      //   // 필요하면 진단값도 추가: industry, targetCustomer 등
+      // };
+
+      // const result = await apiRequest(`/brands/${brandId}/naming`, {
+      //   method: "POST",
+      //   data: payload,
+      // });
+
+      // const nextCandidates = result?.candidates ?? result?.suggestions ?? [];
 
       setCandidates(nextCandidates);
       setSelectedId(null);
@@ -579,10 +613,44 @@ export default function NamingConsultingInterview({ onLogout }) {
     }
   };
 
+  // 백엔드 연동 시 수정 필요
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
   };
+  // const handleSelectCandidate = async (id) => {
+  //   setSelectedId(id);
+  //   persistResult(candidates, id, regenSeed);
+
+    // ============================================================
+    // [BACKEND 연동] 네이밍 선택 저장
+    // - (백엔드 스펙 나오면 endpoint/method/body 확정)
+    // - 예: POST /brands/{brandId}/naming/selection
+    // ============================================================
+
+    // try {
+    //   if (!brandId) return;
+    //   const selected = candidates.find((c) => c.id === id);
+    //   await apiRequest(`/brands/${brandId}/naming/selection`, {
+    //     method: "POST",
+    //     data: {
+    //       selectedId: id,
+    //       selectedName: selected?.name,
+    //       // 필요 시 selected 전체를 보내거나, 핵심만 보내기
+    //     },
+    //   });
+    // } catch (err) {
+    //   console.error(err);
+    //   // 저장 실패 시 UX를 어떻게 할지(경고/롤백) 팀 합의 필요
+    // }
+  // };
+// ============================================================
+// [BACKEND 연동] 네이밍 선택 저장
+// 만약 “저장 버튼이 따로 생긴다”면
+// handleSelectCandidate에는 저장 API를 넣지 않고,
+// 새로 handleSaveSelection()을 만들어서 버튼 onClick에 연결
+// ============================================================
+  
 
   const handleGoNext = () => {
     if (!canGoNext) return;

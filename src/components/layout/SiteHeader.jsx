@@ -186,7 +186,7 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
     clearCurrentUserId();
     clearIsLoggedIn();
     if (typeof onLogout === "function") onLogout();
-    else navigate("/auth/login");
+    else navigate("/login");
   };
 
   return (
