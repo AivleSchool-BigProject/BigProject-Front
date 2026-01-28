@@ -11,10 +11,13 @@ import { PrivacyContent, TermsContent } from "../../components/policy/PolicyCont
 // ✅ 팀 코드의 백 연동 방식 사용
 import { apiRequest } from "../../api/client.js";
 
+// ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
+import { userGetItem, userSetItem } from "../../utils/userLocalStorage.js";
+
 const STORAGE_KEY = "diagnosisInterviewDraft_v1";
 const HOME_SUMMARY_KEY = "diagnosisDraft";
 
-// ✅ 백 연동 결과 저장 키(결과 페이지/리포트에서 활용 가능)
+// ✅ 백 응답 저장 키(결과 페이지에서 읽음)
 const DIAGNOSIS_RESULT_KEY = "diagnosisResult_v1";
 
 const INDUSTRY_OPTIONS = [
@@ -39,6 +42,12 @@ const PERSONA_OPTIONS = [
   { value: "professional", label: "전문직" },
 ];
 
+const getLabel = (value, options) => {
+  const v = String(value || "").trim();
+  if (!v) return "";
+  return options.find((o) => o.value === v)?.label || v;
+};
+
 export default function DiagnosisInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,6 +60,7 @@ export default function DiagnosisInterview({ onLogout }) {
   const [form, setForm] = useState({
     companyName: "", // ✅ 필수
     website: "", // ✅ 선택
+
     oneLine: "",
     customerProblem: "",
     targetPersona: "",
@@ -65,7 +75,7 @@ export default function DiagnosisInterview({ onLogout }) {
   const [lastSaved, setLastSaved] = useState("-");
   const [loaded, setLoaded] = useState(false);
 
-  // ✅ 제출 상태(백 연동 중)
+  // ✅ 제출 상태(백 요청 중)
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ✅ 섹션 스크롤용 ref
@@ -167,7 +177,7 @@ export default function DiagnosisInterview({ onLogout }) {
         stageLabel: currentSectionLabel,
         updatedAt: updatedAtTs,
       };
-      localStorage.setItem(HOME_SUMMARY_KEY, JSON.stringify(summary));
+      userSetItem(HOME_SUMMARY_KEY, JSON.stringify(summary));
     } catch {
       // ignore
     }
@@ -176,7 +186,7 @@ export default function DiagnosisInterview({ onLogout }) {
   // ✅ draft 로드
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = userGetItem(STORAGE_KEY);
       if (!raw) {
         setLoaded(true);
         return;
@@ -217,7 +227,7 @@ export default function DiagnosisInterview({ onLogout }) {
     const t = setTimeout(() => {
       try {
         const payload = { form, updatedAt: Date.now() };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        userSetItem(STORAGE_KEY, JSON.stringify(payload));
         setLastSaved(new Date(payload.updatedAt).toLocaleString());
         setSaveMsg("자동 저장됨");
         saveHomeSummary(payload.updatedAt);
@@ -239,7 +249,31 @@ export default function DiagnosisInterview({ onLogout }) {
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  // ✅ AI 요약 결과 보기(= 백엔드 연동)
+  // ✅ 백이 원하는 "질문:key / 답변:value" JSON 만들기
+  const buildQaMap = () => {
+    const personaLabel = getLabel(form.targetPersona, PERSONA_OPTIONS);
+    const stageLabel = getLabel(form.stage, STAGE_OPTIONS);
+    const industryLabel = getLabel(form.industry, INDUSTRY_OPTIONS);
+
+    return {
+      "회사/프로젝트명": String(form.companyName || "").trim(),
+      "웹사이트/소개 링크 (선택)": String(form.website || "").trim(),
+      "10살 조카에게 설명한다면 한 문장으로?": String(
+        form.oneLine || "",
+      ).trim(),
+      "서비스를 안 쓰면 겪는 가장 큰 문제는?": String(
+        form.customerProblem || "",
+      ).trim(),
+      "핵심 고객층(찐팬 페르소나 선택)":
+        personaLabel || String(form.targetPersona || "").trim(),
+      "경쟁사가 못 따라 할 우리만의 무기(USP)": String(form.usp || "").trim(),
+      "현재 비즈니스 완성도(단계 선택)":
+        stageLabel || String(form.stage || "").trim(),
+      "산업군 선택": industryLabel || String(form.industry || "").trim(),
+      "어떤 제목으로 기사에 나올까?": String(form.visionHeadline || "").trim(),
+    };
+  };
+
   const handleViewResult = async () => {
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 AI 요약 결과를 볼 수 있어요.");
@@ -247,7 +281,7 @@ export default function DiagnosisInterview({ onLogout }) {
     }
     if (isSubmitting) return;
 
-    // 홈 요약 저장(기존 유지)
+    // 홈 진행 요약 저장(기존 로직 유지)
     try {
       const payload = {
         progress,
@@ -256,75 +290,66 @@ export default function DiagnosisInterview({ onLogout }) {
         stageLabel: currentSectionLabel,
         updatedAt: Date.now(),
       };
-      localStorage.setItem(HOME_SUMMARY_KEY, JSON.stringify(payload));
+      userSetItem(HOME_SUMMARY_KEY, JSON.stringify(payload));
     } catch {
       // ignore
     }
 
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
+      const qa = buildQaMap();
 
-      // ✅ 백으로 보낼 인터뷰 JSON
-      const interviewPayload = {
-        companyName: form.companyName,
-        website: form.website,
-        oneLine: form.oneLine,
-        customerProblem: form.customerProblem,
-        targetPersona: form.targetPersona,
-        usp: form.usp,
-        stage: form.stage,
-        industry: form.industry,
-        visionHeadline: form.visionHeadline,
+      // ✅ 호환성 위해 "원본 입력값(form)"도 같이 보냄(백 DTO가 flat일 수도 있어서)
+      const requestBody = {
+        // 기존 flat
+        ...form,
+        // 백 요구: 질문(key):답변(value)
+        qa,
       };
 
-      // ✅ 백 호출: POST /brands/interview (JWT 필요)
-      const result = await apiRequest("/brands/interview", {
+      // ✅ 백 호출 (JWT는 apiRequest가 붙여준다고 가정)
+      // 백이 더미 응답을 내려주면 data로 받음
+      const data = await apiRequest("/brands/interview", {
         method: "POST",
-        data: interviewPayload,
+        data: requestBody,
       });
 
-      // ✅ 응답 저장(결과 페이지에서 활용)
+      // ✅ 결과 저장 (백 응답 구조가 뭐든 저장해두고 Result 페이지에서 유연 렌더)
+      const resultPayload = {
+        brandId: data?.brandId ?? data?.id ?? null,
+        interviewReport: data?.interviewReport ?? data?.report ?? data,
+        receivedAt: Date.now(),
+      };
+
       try {
-        localStorage.setItem(
+        userSetItem(
           DIAGNOSIS_RESULT_KEY,
-          JSON.stringify({
-            ...result, // { brandId, interviewReport }
-            input: interviewPayload,
-            savedAt: Date.now(),
-          }),
+          JSON.stringify(resultPayload),
         );
       } catch {
         // ignore
       }
 
+      // ✅ 결과 페이지 이동 + state로도 넘김(우선순위)
       navigate("/diagnosis/result", {
         state: {
           from: "diagnosisInterview",
           next: "/brandconsulting",
-          brandId: result?.brandId,
-          interviewReport: result?.interviewReport,
+          brandId: resultPayload.brandId,
+          interviewReport: resultPayload.interviewReport,
         },
       });
     } catch (err) {
-      // 팀 apiRequest 에러 구조 대응
-      const msg =
-        err?.userMessage ||
-        err?.message ||
-        "AI 요약 요청 중 오류가 발생했습니다.";
-
-      // 인증 문제 가능성(토큰 만료/미로그인)
-      if (
-        String(msg).includes("401") ||
-        String(msg).toLowerCase().includes("unauthorized")
-      ) {
-        alert(
-          "로그인이 필요하거나 세션이 만료되었습니다. 다시 로그인해주세요.",
-        );
-        navigate("/login");
+      const status = err?.status || err?.response?.status;
+      if (status === 401 || status === 403) {
+        alert("세션이 만료되었어요. 다시 로그인 해주세요.");
+        navigate("/", { replace: true });
         return;
       }
-
-      alert(msg);
+      alert(
+        err?.userMessage ||
+          "요청에 실패했습니다. 백 서버 로그/네트워크 탭을 확인해 주세요.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -358,8 +383,8 @@ export default function DiagnosisInterview({ onLogout }) {
                 초기 진단 인터뷰 (Foundation)
               </h1>
               <p className="diagInterview__sub">
-                필수 항목을 모두 입력하면 AI가 내용을 요약해 “진단 결과”를
-                보여줘요. 결과 페이지에서 브랜드 컨설팅으로 넘어갈 수 있어요.
+                필수 항목을 모두 입력하면 백엔드로 전송하고, 더미/AI 결과를
+                “진단 결과” 페이지에서 보여줘요.
               </p>
             </div>
 
@@ -644,7 +669,7 @@ export default function DiagnosisInterview({ onLogout }) {
                   onClick={handleViewResult}
                   disabled={!canAnalyze || isSubmitting}
                 >
-                  {isSubmitting ? "AI 분석 중..." : "AI 요약 결과 보기"}
+                  {isSubmitting ? "요청 중..." : "AI 요약 결과 보기"}
                 </button>
 
                 {!canAnalyze ? (

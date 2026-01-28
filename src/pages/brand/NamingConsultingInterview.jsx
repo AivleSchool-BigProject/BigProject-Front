@@ -26,6 +26,11 @@ import {
 // ====================================================
 import { apiRequest } from "../../api/client.js";
 
+// ----------------------------------------------------
+// 접속자 별로 진행 상황 다르게
+// ----------------------------------------------------
+import { userGetItem, userSetItem, userRemoveItem } from "../../utils/userLocalStorage.js";
+
 const STORAGE_KEY = "namingConsultingInterviewDraft_v1";
 const RESULT_KEY = "namingConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_naming_v1";
@@ -59,9 +64,9 @@ function stageLabel(v) {
   return String(v);
 }
 
-// =============================================
+// ====================================================
 // [BACKEND 연동] 후보 정규화 함수 추가
-// =============================================
+// ----------------------------------------------------
 function mapServerNamingObjectToCandidates(obj) {
   if (!obj || typeof obj !== "object") return [];
 
@@ -135,6 +140,7 @@ function normalizeNamingCandidates(raw) {
     };
   });
 }
+// ====================================================
 
 // /** ✅ 네이밍 후보 더미 생성(프론트 테스트용) */
 // function generateNamingCandidates(form, seed = 0) {
@@ -346,13 +352,21 @@ export default function NamingConsultingInterview({ onLogout }) {
 
 // ================================================================
 // [BACKEND 연동] brandId 확보 (기업진단 결과에서 가져오기)
-// ================================================================
-
+// ----------------------------------------------------------------
 const [brandId, setBrandId] = useState(null);
 
 useEffect(() => {
   try {
-    const raw = localStorage.getItem("diagnosisResult_v1"); // 기업진단에서 저장한 키
+    // 1) pipeline에서 먼저 찾기
+    const p = readPipeline();
+    const fromPipeline = p?.diagnosisSummary?.brandId;
+    if (fromPipeline) {
+      setBrandId(fromPipeline);
+      return;
+    }
+
+    // 2) 없으면 diagnosisResult_v1 fallback
+    const raw = userGetItem("diagnosisResult_v1");
     if (!raw) return;
     const parsed = JSON.parse(raw);
     if (parsed?.brandId) setBrandId(parsed.brandId);
@@ -360,6 +374,7 @@ useEffect(() => {
     // ignore
   }
 }, []);
+// ================================================================
 
 
   // ✅ 약관/방침 모달
@@ -476,7 +491,7 @@ useEffect(() => {
   // ✅ draft 로드
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = userGetItem(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (parsed?.form && typeof parsed.form === "object") {
@@ -548,7 +563,7 @@ useEffect(() => {
   // ✅ 결과 로드(후보/선택)
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(RESULT_KEY);
+      const raw = userGetItem(RESULT_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed?.candidates)) setCandidates(parsed.candidates);
@@ -565,7 +580,7 @@ useEffect(() => {
     const t = setTimeout(() => {
       try {
         const payload = { form, updatedAt: Date.now() };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        userSetItem(STORAGE_KEY, JSON.stringify(payload));
         setLastSaved(new Date(payload.updatedAt).toLocaleString());
         setSaveMsg("자동 저장됨");
       } catch {
@@ -581,7 +596,7 @@ useEffect(() => {
 
     // ✅ 이 페이지 전용 결과 저장
     try {
-      localStorage.setItem(
+      userSetItem(
         RESULT_KEY,
         JSON.stringify({
           candidates: nextCandidates,
@@ -598,7 +613,7 @@ useEffect(() => {
     try {
       const selected =
         nextCandidates.find((c) => c.id === nextSelectedId) || null;
-      localStorage.setItem(
+      userSetItem(
         LEGACY_KEY,
         JSON.stringify({
           form,
@@ -630,9 +645,9 @@ useEffect(() => {
     }
   };
 
-  // =====================================================
+  // =======================================================
   // [BACKEND 연동] AI 후보 생성 버튼 전체 동작 로직
-  // =====================================================
+  // =======================================================
   const handleGenerateCandidates = async (mode = "generate") => {
   if (!canAnalyze) {
     alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
@@ -701,7 +716,7 @@ useEffect(() => {
 
 
 // ============================================================
-// [BACKEND 연동] 네이밍 선택 저장
+// [BACKEND 연동] 네이밍 저장
 // 컨셉 단계로 이동 버튼을 누를 시 저장
 // ============================================================
   const handleGoNext = async () => {
@@ -741,9 +756,9 @@ useEffect(() => {
     if (!ok) return;
 
     try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(RESULT_KEY);
-      localStorage.removeItem(LEGACY_KEY);
+      userRemoveItem(STORAGE_KEY);
+      userRemoveItem(RESULT_KEY);
+      userRemoveItem(LEGACY_KEY);
     } catch {
       // ignore
     }
