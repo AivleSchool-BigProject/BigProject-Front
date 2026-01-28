@@ -87,7 +87,7 @@ export default function InvestmentPostDetail({ onLogout }) {
     ? item.locations.join(", ")
     : item?.location || "-";
 
-  // --- 수정 버튼 클릭 시 권한 체크 로직 ---
+  // ------ 수정 버튼 클릭 시 권한 체크 로직 -------
   const handleEditClick = (event) => {
     event.stopPropagation();
     event.preventDefault();

@@ -11,12 +11,90 @@ import ConsultingFlowMini from "../../components/consulting/ConsultingFlowMini.j
 import PolicyModal from "../../components/policy/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../../components/policy/PolicyContents.jsx";
 
+import {
+  readPipeline,
+  setStepResult,
+  clearStepsFrom,
+  readDiagnosisDraftForm,
+  upsertPipeline,
+} from "../../utils/brandPipelineStorage.js";
+
+// ============= 접속자 별로 다르게 ============
+import {
+  userSetItem,
+  userRemoveItem,
+  userSafeParse,
+} from "../../utils/userLocalStorage.js";
+
+// ============= [백엔드 연동] api import ============
+import { apiRequest } from "../../api/client.js";
+
 const STORAGE_KEY = "brandStoryConsultingInterviewDraft_v1";
 const RESULT_KEY = "brandStoryConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_story_v1";
 const NEXT_PATH = "/logoconsulting";
 
 const DIAG_KEYS = ["diagnosisInterviewDraft_v1", "diagnosisInterviewDraft"];
+
+// =====================================================
+// [BACKEND 연동] - 정규화 함수 추가
+// -----------------------------------------------------
+function normalizeStoryResponse(res) {
+  // axios response / data 둘 다 대응
+  let d = res?.data ?? res;
+
+  // { data: ... } 한 겹 더 감싸진 경우
+  if (d?.data) d = d.data;
+
+  // 문자열 JSON 대응
+  if (typeof d === "string") {
+    try {
+      d = JSON.parse(d);
+    } catch {
+      return null;
+    }
+  }
+
+  // 이미 배열이면 그대로
+  if (Array.isArray(d)) return d;
+
+  // candidates / stories 같은 키 대응
+  const candidates =
+    d?.candidates ?? d?.stories ?? d?.results ?? d?.storyCandidates;
+
+  if (Array.isArray(candidates)) return candidates;
+
+  // ⭐️ 너희 서버 케이스: { story1, story2, story3 }
+  if (d && typeof d === "object") {
+    const entries = Object.entries(d).filter(
+      ([key, value]) =>
+        /^story\d+$/i.test(key) && typeof value === "string"
+    );
+
+    if (entries.length) {
+      return entries
+        .sort((a, b) => {
+          const na = Number(a[0].match(/\d+/)?.[0] ?? 0);
+          const nb = Number(b[0].match(/\d+/)?.[0] ?? 0);
+          return na - nb;
+        })
+        .map(([key, story], idx) => ({
+          id: `story_${idx + 1}`,
+          name: `${key.toUpperCase()} · 후보`,
+          story, // ⭐️ 중요
+          oneLiner: "",
+          meta: "",
+          plot: "",
+          emotions: [],
+          keywords: [],
+          ending: "",
+        }));
+    }
+  }
+
+  return null;
+}
+// =====================================================
 
 function safeText(v, fallback = "") {
   const s = String(v ?? "").trim();
@@ -305,6 +383,32 @@ const INITIAL_FORM = {
 };
 
 export default function BrandStoryConsultingInterview({ onLogout }) {
+
+  //==========================================================
+  // [BACKEND 연동] - 기업 진단 결과 갖고오기
+  // ---------------------------------------------------------
+  const [brandId, setBrandId] = useState(null);
+
+  useEffect(() => {
+  try {
+    // 1) pipeline에서 먼저 찾기 (가장 신뢰도 높음)
+    const p = readPipeline();
+    const fromPipeline = p?.diagnosisSummary?.brandId;
+    if (fromPipeline) {
+      setBrandId(fromPipeline);
+      return;
+    }
+
+    // 2) 없으면 diagnosisResult_v1 fallback (user scope + safe parse)
+    const parsed = userSafeParse("diagnosisResult_v1");
+    if (parsed?.brandId) setBrandId(parsed.brandId);
+  } catch {
+    // ignore
+  }
+}, []);
+  // ==========================================================
+
+
   const navigate = useNavigate();
 
   // ✅ 약관/방침 모달
@@ -395,11 +499,11 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   // ✅ draft 로드 (+ 간단한 구버전 필드 마이그레이션)
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const loaded =
-        parsed?.form && typeof parsed.form === "object" ? parsed.form : null;
+      const parsed = userSafeParse(STORAGE_KEY);
+      if (!parsed) return;
+      
+      const loaded = parsed?.form && typeof parsed.form === "object" ? parsed.form : null;
+      
       if (loaded) {
         setForm((prev) => {
           const next = { ...prev, ...loaded };
@@ -451,7 +555,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   // ✅ 기업 진단&인터뷰 값 자동 반영
   useEffect(() => {
     try {
-      const diag = readDiagnosisForm();
+      const diag = readDiagnosisDraftForm();
       if (!diag) return;
 
       const next = {
@@ -496,9 +600,8 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   // ✅ 결과 로드(후보/선택)
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(RESULT_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
+      const parsed = userSafeParse(RESULT_KEY);
+      if (!parsed) return;
       if (Array.isArray(parsed?.candidates)) setCandidates(parsed.candidates);
       if (parsed?.selectedId) setSelectedId(parsed.selectedId);
       if (typeof parsed?.regenSeed === "number") setRegenSeed(parsed.regenSeed);
@@ -513,7 +616,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     const t = setTimeout(() => {
       try {
         const payload = { form, updatedAt: Date.now() };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        // 접속자별로 구분
+        userSetItem(STORAGE_KEY, JSON.stringify(payload));
+
         setLastSaved(new Date(payload.updatedAt).toLocaleString());
         setSaveMsg("자동 저장됨");
       } catch {
@@ -528,7 +633,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     const updatedAt = Date.now();
 
     try {
-      localStorage.setItem(
+      userSetItem(
         RESULT_KEY,
         JSON.stringify({
           candidates: nextCandidates,
@@ -545,7 +650,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     try {
       const selected =
         nextCandidates.find((c) => c.id === nextSelectedId) || null;
-      localStorage.setItem(
+      userSetItem(
         LEGACY_KEY,
         JSON.stringify({
           form,
@@ -561,58 +666,177 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     }
   };
 
+  // -------------------------연동 시 삭제--------------------------
+  // const handleGenerateCandidates = async (mode = "generate") => {
+  //   // 🔌 BACKEND 연동 포인트 (브랜드 스토리 컨설팅 - AI 분석 요청 버튼)
+  //   // - 백엔드 연동 시(명세서 기준):
+  //   //   A) 인터뷰 저장(공통): POST /brands/interview
+  //   //   B) 스토리 생성:     POST /brands/story (또는 유사)
+  //   if (!canAnalyze) {
+  //     alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
+  //     return;
+  //   }
+
+  //   setAnalyzing(true);
+  //   try {
+  //     const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
+  //     if (mode === "regen") setRegenSeed(nextSeed);
+
+  //     await new Promise((r) => setTimeout(r, 450));
+  //     const nextCandidates = generateStoryCandidates(form, nextSeed);
+
+  //     setCandidates(nextCandidates);
+  //     setSelectedId(null);
+  //     persistResult(nextCandidates, null, nextSeed);
+  //     scrollToResult();
+  //   } finally {
+  //     setAnalyzing(false);
+  //   }
+  // };
+  // ----------------------------------------------------------------
+
+  // ================================================================
+  // [BACKEND 연동] - 
+  // ----------------------------------------------------------------
   const handleGenerateCandidates = async (mode = "generate") => {
-    // 🔌 BACKEND 연동 포인트 (브랜드 스토리 컨설팅 - AI 분석 요청 버튼)
-    // - 백엔드 연동 시(명세서 기준):
-    //   A) 인터뷰 저장(공통): POST /brands/interview
-    //   B) 스토리 생성:     POST /brands/story (또는 유사)
-    if (!canAnalyze) {
-      alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
+  if (!canAnalyze) {
+    alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
+    return;
+  }
+  if (!brandId) {
+    alert("brandId가 없어 앞의 진단을 먼저 진행해주세요.");
+    return;
+  }
+
+  setAnalyzing(true);
+  try {
+    const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
+    if (mode === "regen") setRegenSeed(nextSeed);
+
+    // ✅ 서버로 보내는 storyInput (Map<String,Object>)
+    const storyInput = {
+      founding_story: form.founding_story,
+      customer_conflict: form.customer_conflict,
+      customer_transformation: form.customer_transformation,
+      brand_mission: form.brand_mission,
+      story_plot: form.story_plot,
+      story_emotion: form.story_emotion,
+      ultimate_goal: form.ultimate_goal,
+      notes: form.notes,
+    };
+    
+    
+    const res = await apiRequest(`/brands/${brandId}/story`, {
+      method: "POST",
+      data: storyInput,
+    });
+
+    const data = res?.data ?? res;
+
+    console.log("RES:", res);
+    console.log("DATA typeof:", typeof (res?.data ?? res), res?.data ?? res);
+    console.log("DATA2 typeof:", typeof ((res?.data ?? res)?.data), (res?.data ?? res)?.data);
+    
+    const nextCandidates = normalizeStoryResponse(res);
+    
+    console.log("normalized candidates:", nextCandidates);
+    
+    if (!Array.isArray(nextCandidates)) {
+      console.log("story response raw:", res);
+      alert("스토리 응답 형식을 확인해주세요. (콘솔 확인)");
       return;
     }
+    
+    setCandidates(nextCandidates);
+    setSelectedId(null);
+    persistResult(nextCandidates, null, nextSeed);
+    scrollToResult();
 
-    setAnalyzing(true);
-    try {
-      const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
-      if (mode === "regen") setRegenSeed(nextSeed);
-
-      await new Promise((r) => setTimeout(r, 450));
-      const nextCandidates = generateStoryCandidates(form, nextSeed);
-
-      setCandidates(nextCandidates);
-      setSelectedId(null);
-      persistResult(nextCandidates, null, nextSeed);
-      scrollToResult();
-    } finally {
-      setAnalyzing(false);
-    }
-  };
+  
+  } catch (e) {
+    console.error(e);
+    alert("스토리 생성 요청 중 오류가 발생했어요.");
+  } finally {
+    setAnalyzing(false);
+  }
+};
+// ===========================================================
 
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
+    
+    const selected = candidates.find((c) => c.id === id) || null;
+    setStepResult("story", { candidates, selectedId: id, selected });
   };
 
-  const handleGoNext = () => {
+// ============================================================
+// [BACKEND 연동] - 다음 단계 버튼 누르면 저장
+// ------------------------------------------------------------
+const handleGoNext = async () => {
+  if (!brandId) {
+    alert("brandId가 없어 진단을 먼저 진행해주세요.");
+    return;
+  }
+  if (!selectedId) {
+    alert("후보 1개를 선택해 주세요.");
+    return;
+  }
+
+  const selected = candidates.find((c) => c.id === selectedId);
+  if (!selected) {
+    alert("선택한 후보를 찾을 수 없어요.");
+    return;
+  }
+
+  try {
+    // DTO: { selectedByUser: String }
+    // 보통은 selected.story(본문) 저장이 자연스러움
+    const body = { selectedByUser: selected.story };
+
+    
+    await apiRequest(`/brands/${brandId}/story/select`, {
+      method: "POST",
+      data: body,
+    });
+    
+    upsertPipeline({
+      brandId,
+      story: {
+        selectedId,
+        selected,
+      },
+    });
+    
+
     navigate(NEXT_PATH);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  } catch (e) {
+    console.error(e);
+    alert(
+      "스토리 저장 실패: 컨셉 선택 완료 후 다시 시도해 주세요. (서버 단계가 STORY여야 해요)"
+    );
+  }
+};
+// =============================================================
 
   const handleResetAll = () => {
     const ok = window.confirm("입력/결과를 모두 초기화할까요?");
     if (!ok) return;
 
     try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(RESULT_KEY);
-      localStorage.removeItem(LEGACY_KEY);
+      userRemoveItem(STORAGE_KEY);
+      userRemoveItem(RESULT_KEY);
+      userRemoveItem(LEGACY_KEY);
     } catch {
       // ignore
     }
 
+    clearStepsFrom("story");
+
     const diag = (() => {
       try {
-        return readDiagnosisForm();
+        return readDiagnosisDraftForm();
       } catch {
         return null;
       }
@@ -657,6 +881,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     setSaveMsg("");
     setLastSaved("-");
   };
+
+
+  // ================== UI 관련 ========================
 
   return (
     <div className="diagInterview consultingInterview">

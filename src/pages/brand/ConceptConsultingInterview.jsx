@@ -11,6 +11,26 @@ import ConsultingFlowMini from "../../components/consulting/ConsultingFlowMini.j
 import PolicyModal from "../../components/policy/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../../components/policy/PolicyContents.jsx";
 
+import {
+  userGetItem,
+  userSetItem,
+  userRemoveItem,
+} from "../../utils/userLocalStorage.js";
+
+import {
+  ensureStrictStepAccess,
+  setBrandFlowCurrent,
+  markBrandFlowPendingAbort,
+  consumeBrandFlowPendingAbort,
+  abortBrandFlow,
+  setStepResult,
+  clearStepsFrom,
+  readPipeline,
+} from "../../utils/brandPipelineStorage.js";
+
+// ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
+import { apiRequest } from "../../api/client.js";
+
 const STORAGE_KEY = "conceptInterviewDraft_homepage_v6";
 const RESULT_KEY = "conceptInterviewResult_homepage_v6";
 const LEGACY_KEY = "brandInterview_homepage_v1";
@@ -21,6 +41,10 @@ const DIAG_KEYS = ["diagnosisInterviewDraft_v1", "diagnosisInterviewDraft"];
 function safeText(v, fallback = "") {
   const s = String(v ?? "").trim();
   return s ? s : fallback;
+}
+
+function hasText(v) {
+  return Boolean(String(v ?? "").trim());
 }
 
 function stageLabel(v) {
@@ -46,9 +70,122 @@ function safeParse(raw) {
   }
 }
 
+/** ======================
+ *  ✅ 백 응답 후보 normalize (3안 형태로 통일)
+ *  - 백에서 내려준 데이터만 사용
+ *  ====================== */
+function normalizeConceptCandidates(raw) {
+  const payload = raw?.data ?? raw?.result ?? raw;
+
+  const takeObjCandidates = (obj) => {
+    const keys = [
+      "concept1",
+      "concept2",
+      "concept3",
+      "candidate1",
+      "candidate2",
+      "candidate3",
+      "option1",
+      "option2",
+      "option3",
+    ];
+    const list = [];
+    for (const k of keys) {
+      const v = obj?.[k];
+      if (v === undefined || v === null) continue;
+      list.push(v);
+    }
+    return list;
+  };
+
+  // 1) 배열로 직접 온 경우
+  let list = Array.isArray(payload) ? payload : null;
+
+  // 2) candidates / concepts 키로 온 경우
+  if (!list && payload && typeof payload === "object") {
+    list =
+      payload?.candidates ||
+      payload?.concepts ||
+      payload?.data?.candidates ||
+      payload?.data?.concepts ||
+      payload?.result?.candidates ||
+      payload?.result?.concepts ||
+      null;
+  }
+
+  // 3) object에 concept1/2/3 형태로 담긴 경우
+  if (
+    !list &&
+    payload &&
+    typeof payload === "object" &&
+    !Array.isArray(payload)
+  ) {
+    list = takeObjCandidates(payload);
+  }
+
+  if (!Array.isArray(list)) return [];
+
+  return list.slice(0, 3).map((item, idx) => {
+    if (typeof item === "string") {
+      const title = item.trim();
+      return {
+        id: `concept_${idx + 1}`,
+        title,
+        summary: "",
+        tone: "",
+        coreValues: [],
+        brandArchetype: [],
+        keyMessage: "",
+        trustFactors: "",
+        conceptVibe: "",
+        keywords: [],
+        slogan: "",
+        oneLine: "",
+        note: "",
+      };
+    }
+
+    const obj = item && typeof item === "object" ? item : {};
+    const id = safeText(
+      obj.id || obj.candidateId || obj.conceptId || "",
+      `concept_${idx + 1}`,
+    );
+    const title = safeText(
+      obj.title ||
+        obj.name ||
+        obj.label ||
+        obj.conceptName ||
+        obj.concept ||
+        "",
+      "",
+    );
+
+    return {
+      id,
+      title,
+      summary: safeText(
+        obj.summary || obj.description || obj.overview || "",
+        "",
+      ),
+      tone: safeText(obj.tone || obj.brandTone || obj.voice || "", ""),
+      coreValues: Array.isArray(obj.coreValues) ? obj.coreValues : [],
+      brandArchetype: Array.isArray(obj.brandArchetype)
+        ? obj.brandArchetype
+        : [],
+      keyMessage: safeText(obj.keyMessage || obj.key_message || "", ""),
+      trustFactors: safeText(obj.trustFactors || obj.trust_factors || "", ""),
+      conceptVibe: safeText(obj.conceptVibe || obj.vibe || "", ""),
+      keywords: Array.isArray(obj.keywords) ? obj.keywords : [],
+      slogan: safeText(obj.slogan || obj.tagline || "", ""),
+      oneLine: safeText(obj.oneLine || obj.one_line || obj.oneLiner || "", ""),
+      note: safeText(obj.note || obj.memo || "", ""),
+    };
+  });
+}
+
 function readDiagnosisForm() {
   for (const k of DIAG_KEYS) {
-    const parsed = safeParse(localStorage.getItem(k));
+    const parsed = safeParse(userGetItem(k));
     if (!parsed) continue;
     const form =
       parsed?.form && typeof parsed.form === "object" ? parsed.form : parsed;
@@ -108,91 +245,6 @@ function MultiChips({ value, options, onChange, max = null }) {
   );
 }
 
-function generateConceptCandidates(form, seed = 0) {
-  const brandName = safeText(form?.brandName, "브랜드");
-  const category = safeText(form?.category, "분야");
-  const stage = stageLabel(form?.stage);
-  const target = safeText(form?.targetCustomer, "고객");
-  const oneLine = safeText(form?.oneLine, "");
-
-  const coreValues = Array.isArray(form?.core_values) ? form.core_values : [];
-  const brandVoice = Array.isArray(form?.brand_voice) ? form.brand_voice : [];
-  const brandArchetype = Array.isArray(form?.brand_archetype)
-    ? form.brand_archetype
-    : [];
-
-  const keyMessage = safeText(form?.key_message, "고객이 기억해야 할 한 문장");
-  const trustFactors = safeText(form?.trust_factors, "신뢰 포인트");
-  const vibe = safeText(form?.concept_vibe, "담백하고 신뢰감");
-  const sloganKw = safeText(form?.slogan_keywords, "");
-
-  const pick = (arr, idx) => arr[(idx + seed) % arr.length];
-
-  const tonePresets = [
-    { tone: "미니멀/신뢰", vibeHint: "차분 · 정돈 · 확신" },
-    { tone: "테크/선명", vibeHint: "명확 · 속도 · 정확" },
-    { tone: "따뜻/친근", vibeHint: "따뜻 · 쉬움 · 공감" },
-  ];
-
-  const slogans = [
-    "복잡함을 단순하게",
-    "신뢰로 선택을 돕다",
-    "성장을 설계하다",
-    "실행을 이어가다",
-    "확신을 만드는 한 걸음",
-  ];
-
-  const mk = (id, preset, archeFallback, voiceFallback) => {
-    const arche = brandArchetype[0] || archeFallback;
-    const voice = brandVoice[0] || voiceFallback;
-    const core = coreValues.length
-      ? coreValues.slice(0, 2).join(" · ")
-      : "신뢰 · 단순함";
-
-    const slogan = sloganKw
-      ? `${sloganKw}로 더 ${preset.tone.split("/")[0]}하게`
-      : pick(slogans, 0);
-
-    const keywords = Array.from(
-      new Set([
-        ...coreValues,
-        arche,
-        voice,
-        vibe,
-        ...(sloganKw ? [sloganKw] : []),
-        preset.tone.split("/")[0],
-      ]),
-    ).slice(0, 10);
-
-    return {
-      id,
-      title: `${brandName} · ${preset.tone} 컨셉`,
-      summary: `${category}(${stage})에서 ${target}에게 '${keyMessage}'를 전달하는 ${arche}형 브랜드`,
-      tone: `${voice} · ${preset.tone}`,
-      coreValues: coreValues.length ? coreValues : ["신뢰", "단순함"],
-      brandVoice: brandVoice.length ? brandVoice : [voice],
-      brandArchetype: brandArchetype.length ? brandArchetype : [arche],
-      keyMessage,
-      trustFactors,
-      conceptVibe: vibe || preset.vibeHint,
-      slogan,
-      keywords,
-      oneLine: oneLine ? `“${oneLine}”` : `“${keyMessage}”`,
-      note: `핵심가치(${core}) 기반으로 ‘톤/아키타입/시각 분위기’를 정렬한 방향입니다.`,
-    };
-  };
-
-  const p1 = pick(tonePresets, 0);
-  const p2 = pick(tonePresets, 1);
-  const p3 = pick(tonePresets, 2);
-
-  return [
-    mk("concept_1", p1, "현자(Sage)", "전문적인 박사님"),
-    mk("concept_2", p2, "창조자(Creator)", "친절한 가이드"),
-    mk("concept_3", p3, "영웅(Hero)", "위트 있는 친구"),
-  ];
-}
-
 const CORE_VALUE_OPTIONS = ["혁신", "신뢰", "단순함"];
 const BRAND_VOICE_OPTIONS = [
   "전문적인 박사님",
@@ -209,25 +261,70 @@ const INITIAL_FORM = {
   oneLine: "",
   targetCustomer: "",
   referenceLink: "",
-  // ============================================
-  // 2026-01-27
-  // 선택한 네이밍 자동 반영용
-  // ============================================
-  selectedNaming: "", 
 
   // ✅ Step 3. 브랜드 컨셉/톤 (편집 O)
-  core_values: [], // multiple
-  brand_voice: [], // multiple
-  brand_archetype: [], // multiple
+  core_values: [],
+  brand_voice: [],
+  brand_archetype: [],
   key_message: "",
   trust_factors: "",
   concept_vibe: "",
-  slogan_keywords: "", // optional
-  notes: "", // 선택 메모(유지)
+  slogan_keywords: "",
+  notes: "",
 };
 
 export default function ConceptConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
+
+  // ✅ Strict Flow 가드(컨셉 단계) + 이탈/새로고침 처리
+  useEffect(() => {
+    try {
+      const hadPending = consumeBrandFlowPendingAbort();
+      if (hadPending) {
+        abortBrandFlow("interrupted");
+        window.alert(
+          "브랜드 컨설팅 진행이 중단되어, 네이밍부터 다시 시작합니다.",
+        );
+      }
+    } catch {
+      // ignore
+    }
+
+    const guard = ensureStrictStepAccess("concept");
+    if (!guard.ok) {
+      const msg =
+        guard?.reason === "no_back"
+          ? "이전 단계로는 돌아갈 수 없습니다. 현재 진행 중인 단계에서 계속 진행해 주세요."
+          : "이전 단계를 먼저 완료해 주세요.";
+      window.alert(msg);
+      navigate(guard.redirectTo || "/brand/naming/interview", {
+        replace: true,
+      });
+      return;
+    }
+
+    try {
+      setBrandFlowCurrent("concept");
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ✅ 새로고침/탭닫기 경고 + 다음 진입 시 네이밍부터 리셋
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      try {
+        markBrandFlowPendingAbort("beforeunload");
+      } catch {
+        // ignore
+      }
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
 
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
@@ -299,11 +396,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const scrollToSection = (ref) => {
-    if (!ref?.current) return;
-    ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   const scrollToResult = () => {
     if (!refResult?.current) return;
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -312,7 +404,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
   // ✅ draft 로드
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = userGetItem(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (parsed?.form && typeof parsed.form === "object") {
@@ -374,43 +466,11 @@ export default function ConceptConsultingInterview({ onLogout }) {
       // ignore
     }
   }, []);
-  
-  // ===========================================================
-  // 2026-01-27 
-  // 네이밍 단계에서 선택한 네이밍 자동 반영
-  // ===========================================================
-  const NAMING_RESULT_KEY = "namingConsultingInterviewResult_v1"; // 네이밍 RESULT_KEY
-  
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(NAMING_RESULT_KEY);
-      if (!raw) return;
-      
-      const parsed = JSON.parse(raw);
-      // 네이밍 페이지 persistResult 구조: { candidates, selectedId, ... }
-      const candidates = Array.isArray(parsed?.candidates) ? parsed.candidates : [];
-      const selectedId = parsed?.selectedId;
-      
-      const selected = candidates.find((c) => c.id === selectedId);
-      const selectedName =
-      selected?.selectedNameForServer ?? selected?.name ?? "";
-      
-      if (!selectedName) return;
-      
-      setForm((prev) => ({
-        ...prev,
-        selectedNaming: selectedName,
-      }));
-    
-    } catch {
-      // ignore
-      }
-    }, []);
 
   // ✅ 결과 로드(후보/선택)
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(RESULT_KEY);
+      const raw = userGetItem(RESULT_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed?.candidates)) setCandidates(parsed.candidates);
@@ -427,7 +487,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     const t = setTimeout(() => {
       try {
         const payload = { form, updatedAt: Date.now() };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        userSetItem(STORAGE_KEY, JSON.stringify(payload));
         setLastSaved(new Date(payload.updatedAt).toLocaleString());
         setSaveMsg("자동 저장됨");
       } catch {
@@ -442,7 +502,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     const updatedAt = Date.now();
 
     try {
-      localStorage.setItem(
+      userSetItem(
         RESULT_KEY,
         JSON.stringify({
           candidates: nextCandidates,
@@ -459,7 +519,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     try {
       const selected =
         nextCandidates.find((c) => c.id === nextSelectedId) || null;
-      localStorage.setItem(
+      userSetItem(
         LEGACY_KEY,
         JSON.stringify({
           form,
@@ -473,30 +533,109 @@ export default function ConceptConsultingInterview({ onLogout }) {
     } catch {
       // ignore
     }
+
+    // ✅ pipeline 저장 + 이후 단계 초기화(컨셉이 바뀌면 스토리/로고는 무효)
+    try {
+      const selected =
+        nextCandidates.find((c) => c.id === nextSelectedId) || null;
+      setStepResult("concept", {
+        candidates: nextCandidates,
+        selectedId: nextSelectedId,
+        selected,
+        regenSeed: nextSeed,
+        updatedAt,
+      });
+      clearStepsFrom("story");
+    } catch {
+      // ignore
+    }
   };
 
   const handleGenerateCandidates = async (mode = "generate") => {
-    // 🔌 BACKEND 연동 포인트 (컨셉 컨설팅 - AI 분석 요청 버튼)
-    // - 백엔드 연동 시(명세서 기준):
-    //   A) 인터뷰 저장(공통): POST /brands/interview
-    //   B) 컨셉 생성:       POST /brands/concept (또는 유사)
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
     }
+
+    const p = readPipeline();
+    let brandId =
+    p?.brandId ||
+    p?.brand?.id ||
+    p?.diagnosisResult?.brandId ||
+    p?.diagnosis?.brandId ||
+    null;
+    
+    // ✅ fallback: diagnosisResult_v1 에서 복구 + pipeline에 저장
+    if (!brandId) {
+      const diag = safeParse(userGetItem("diagnosisResult_v1"));
+      brandId = diag?.brandId ?? null;
+      
+      if (brandId != null) {
+        upsertPipeline({ brandId });
+      }
+    }
+    
+    if (!brandId) {
+      alert("brandId를 확인할 수 없습니다. 기업진단 → 네이밍을 먼저 진행해 주세요.");
+      navigate("/diagnosisinterview");
+      return;
+    }
+
 
     setAnalyzing(true);
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
 
-      await new Promise((r) => setTimeout(r, 450));
-      const nextCandidates = generateConceptCandidates(form, nextSeed);
+      const payload = {
+        ...form,
+        mode,
+        regenSeed: nextSeed,
+        questionnaire: {
+          step: "concept",
+          version: "concept_v1",
+          locale: "ko-KR",
+        },
+      };
+
+      const res = await apiRequest(`/brands/${brandId}/concept`, {
+        method: "POST",
+        data: payload,
+      });
+
+      const nextCandidates = normalizeConceptCandidates(res);
+
+      if (!nextCandidates.length) {
+        alert(
+          "컨셉 후보를 받지 못했습니다. 백 응답 포맷(concept1~3 또는 candidates 배열)을 확인해주세요.",
+        );
+        setCandidates([]);
+        setSelectedId(null);
+        persistResult([], null, nextSeed);
+        return;
+      }
 
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
       scrollToResult();
+    } catch (e) {
+      const status = e?.response?.status;
+      const msg =
+        e?.response?.data?.message || e?.userMessage || e?.message || "";
+
+      console.warn("POST /brands/{brandId}/concept failed:", e);
+
+      if (status === 401 || status === 403) {
+        alert(
+          status === 401
+            ? "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요."
+            : "권한이 없습니다(403). 현재 로그인한 계정의 brandId가 아닐 수 있어요. 기업진단을 다시 진행해 brandId를 새로 생성한 뒤 시도해주세요.",
+        );
+        return;
+      }
+
+      alert(`컨셉 생성 요청에 실패했습니다: ${msg || "요청 실패"}`);
     } finally {
       setAnalyzing(false);
     }
@@ -507,7 +646,66 @@ export default function ConceptConsultingInterview({ onLogout }) {
     persistResult(candidates, id, regenSeed);
   };
 
-  const handleGoNext = () => {
+  const handleGoNext = async () => {
+    if (!canGoNext) return;
+
+    const p = readPipeline();
+    const brandId =
+      p?.brandId ||
+      p?.brand?.id ||
+      p?.diagnosisResult?.brandId ||
+      p?.diagnosis?.brandId ||
+      null;
+
+    const selected =
+      candidates.find((c) => c.id === selectedId) ||
+      candidates.find((c) => c.id === (selectedId || "")) ||
+      null;
+
+    const selectedConcept =
+      selected?.title ||
+      selected?.conceptTitle ||
+      selected?.oneLiner ||
+      selected?.summary ||
+      selected?.oneLine ||
+      "";
+
+    if (!brandId) {
+      alert("brandId를 확인할 수 없습니다. 기업진단을 다시 진행해 주세요.");
+      return;
+    }
+    if (!String(selectedConcept).trim()) {
+      alert("선택된 컨셉을 찾을 수 없습니다. 후보를 다시 선택해 주세요.");
+      return;
+    }
+
+    try {
+      await apiRequest(`/brands/${brandId}/concept/select`, {
+        method: "POST",
+        data: { selectedByUser: String(selectedConcept) },
+      });
+    } catch (e) {
+      const status = e?.response?.status;
+      const msg =
+        e?.response?.data?.message || e?.userMessage || e?.message || "";
+
+      console.warn("POST /brands/{brandId}/concept/select failed:", e);
+
+      if (status === 401 || status === 403) {
+        alert(
+          status === 401
+            ? "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요."
+            : "권한이 없습니다(403). 보통 현재 로그인한 계정의 brandId가 아닌 값으로 요청할 때 발생합니다. 기업진단을 다시 진행해 brandId를 새로 생성한 뒤 시도해주세요.",
+        );
+        return;
+      }
+
+      if (!String(msg).includes("컨셉")) {
+        alert(`컨셉 선택 저장에 실패했습니다: ${msg || "요청 실패"}`);
+        return;
+      }
+    }
+
     navigate(NEXT_PATH);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -517,9 +715,16 @@ export default function ConceptConsultingInterview({ onLogout }) {
     if (!ok) return;
 
     try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(RESULT_KEY);
-      localStorage.removeItem(LEGACY_KEY);
+      userRemoveItem(STORAGE_KEY);
+      userRemoveItem(RESULT_KEY);
+      userRemoveItem(LEGACY_KEY);
+    } catch {
+      // ignore
+    }
+
+    try {
+      clearStepsFrom("concept");
+      setBrandFlowCurrent("concept");
     } catch {
       // ignore
     }

@@ -29,7 +29,7 @@ import { apiRequest } from "../../api/client.js";
 // ----------------------------------------------------
 // 접속자 별로 진행 상황 다르게
 // ----------------------------------------------------
-import { userGetItem, userSetItem, userRemoveItem } from "../../utils/userLocalStorage.js";
+import { userGetItem, userSetItem, userRemoveItem, userSafeParse } from "../../utils/userLocalStorage.js";
 
 const STORAGE_KEY = "namingConsultingInterviewDraft_v1";
 const RESULT_KEY = "namingConsultingInterviewResult_v1";
@@ -357,19 +357,21 @@ const [brandId, setBrandId] = useState(null);
 
 useEffect(() => {
   try {
-    // 1) pipeline에서 먼저 찾기
     const p = readPipeline();
-    const fromPipeline = p?.diagnosisSummary?.brandId;
+    
+    const fromPipeline = p?.brandId;
+
     if (fromPipeline) {
       setBrandId(fromPipeline);
       return;
     }
 
-    // 2) 없으면 diagnosisResult_v1 fallback
-    const raw = userGetItem("diagnosisResult_v1");
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    if (parsed?.brandId) setBrandId(parsed.brandId);
+    const parsed = userSafeParse("diagnosisResult_v1");
+    if (parsed?.brandId) {
+      setBrandId(parsed.brandId);
++     // ✅ 여기서 pipeline에 심어주기 (중요)
++     upsertPipeline({ brandId: parsed.brandId });
+    }
   } catch {
     // ignore
   }
@@ -738,8 +740,12 @@ useEffect(() => {
   try {
     await apiRequest(`/brands/${brandId}/naming/select`, {
       method: "POST",
-      data: { selectedName },
+      data: { selectedByUser: selectedName },
     });
+
+    // 2026-01-28
+    // brandId를 pipeline에 확정 저장
+    upsertPipeline({ brandId });
 
     navigate("/brand/concept/interview");
     window.scrollTo({ top: 0, behavior: "smooth" });
