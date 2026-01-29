@@ -19,7 +19,7 @@ import {
   upsertPipeline,
 } from "../../utils/brandPipelineStorage.js";
 
-// ============= 접속자 별로 다르게 ============
+// ============== 접속자 별로 다르게 ===============
 import {
   userSetItem,
   userRemoveItem,
@@ -187,178 +187,6 @@ function MultiChips({ value, options, onChange, max = null }) {
 
 const STORY_PLOT_OPTIONS = ["문제 해결형", "비전 제시형", "탄생 신화형"];
 const STORY_EMOTION_OPTIONS = ["안도감", "호기심"];
-
-function generateStoryCandidates(form, seed = 0) {
-  const companyName = safeText(form?.companyName, "우리");
-  const industry = safeText(form?.industry, "분야");
-  const stage = stageLabel(form?.stage);
-  const target = safeText(form?.targetCustomer, "고객");
-  const oneLine = safeText(form?.oneLine, "");
-
-  const founding = safeText(form?.founding_story, "");
-  const transformation = safeText(form?.customer_transformation, "");
-  const mission = safeText(form?.brand_mission, "");
-  const conflict = safeText(form?.customer_conflict, "");
-  const ultimate = safeText(form?.ultimate_goal, "");
-
-  const plots = Array.isArray(form?.story_plot) ? form.story_plot : [];
-  const emotions = Array.isArray(form?.story_emotion) ? form.story_emotion : [];
-
-  const pick = (arr, idx) => arr[(idx + seed) % arr.length];
-
-  const hooks = [
-    "왜 좋은 선택이 늘 어려울까요?",
-    "고객의 하루는 늘 방해물로 가득합니다.",
-    "우리는 ‘당연한 불편’을 당연하게 넘기지 않았습니다.",
-    "작은 결핍이 큰 포기로 이어지는 순간이 있습니다.",
-  ];
-
-  const endings = [
-    "우리는 오늘도 고객이 더 쉽게, 더 확신 있게 앞으로 나아가도록 돕습니다.",
-    "우리는 고객이 멈추는 지점에서 다시 움직이게 만드는 브랜드가 되겠습니다.",
-    "우리는 더 나은 내일을 ‘실행 가능한 이야기’로 만들겠습니다.",
-  ];
-
-  const baseMeta = () => ({
-    oneLiner: oneLine
-      ? `“${oneLine}”`
-      : `“${ultimate || mission || "브랜드 스토리"}”`,
-    meta: `${industry} · ${stage} · 타깃: ${target}`,
-    emotions: emotions.length ? emotions : ["안도감"],
-  });
-
-  const buildStory = (plotType) => {
-    const hook = pick(hooks, 0);
-    const end = pick(endings, 1);
-
-    const pFounding = founding
-      ? `【창업 계기】\n${founding}`
-      : `【창업 계기】\n시작은 작은 질문에서 출발했습니다. “${hook}”`;
-
-    const pConflict = conflict
-      ? `【고객의 결핍/방해물】\n${conflict}`
-      : `【고객의 결핍/방해물】\n${target}은(는) 중요한 순간에 ‘정보/시간/확신’의 결핍으로 흔들립니다.`;
-
-    const pTransform = transformation
-      ? `【사용 전/후 변화】\n${transformation}`
-      : `【사용 전/후 변화】\n사용 전에는 고민이 길어지고 실행이 끊기지만, 사용 후에는 선택이 빨라지고 실행이 이어집니다.`;
-
-    const pMission = mission
-      ? `【미션】\n${mission}`
-      : `【미션】\n우리는 수익을 넘어, 고객이 더 나은 결정을 내리고 지속적으로 성장하도록 돕고자 합니다.`;
-
-    const pUltimate = ultimate
-      ? `【궁극적 목표】\n${ultimate}`
-      : `【궁극적 목표】\n우리는 ‘더 쉽고 더 신뢰할 수 있는 선택’이 당연한 세상을 만들고자 합니다.`;
-
-    const emoLine = `【자극하고 싶은 감정】 ${(emotions.length
-      ? emotions
-      : ["안도감"]
-    ).join(" · ")}`;
-
-    // 플롯별 구조 차등
-    if (plotType === "문제 해결형") {
-      return {
-        plot: plotType,
-        story: [
-          `【훅】 ${hook}`,
-          pConflict,
-          pFounding,
-          pTransform,
-          pMission,
-          pUltimate,
-          emoLine,
-          `【마무리】 ${end}`,
-        ].join("\n\n"),
-        ending: end,
-      };
-    }
-
-    if (plotType === "비전 제시형") {
-      return {
-        plot: plotType,
-        story: [
-          `【훅】 우리가 꿈꾸는 미래는 분명합니다.`,
-          pUltimate,
-          pMission,
-          pConflict,
-          pTransform,
-          pFounding,
-          emoLine,
-          `【마무리】 ${end}`,
-        ].join("\n\n"),
-        ending: end,
-      };
-    }
-
-    // 탄생 신화형
-    return {
-      plot: plotType,
-      story: [
-        `【훅】 이 이야기는 ‘왜 시작했는가’에서 시작합니다.`,
-        pFounding,
-        pMission,
-        pConflict,
-        pTransform,
-        pUltimate,
-        emoLine,
-        `【마무리】 ${end}`,
-      ].join("\n\n"),
-      ending: end,
-    };
-  };
-
-  const plotPool = plots.length ? plots : STORY_PLOT_OPTIONS;
-
-  const p1 = pick(plotPool, 0);
-  const p2 = pick(plotPool, 1);
-  const p3 = pick(plotPool, 2);
-
-  const mk = (id, name, plotType, variantSeed) => {
-    const { plot, story, ending } = buildStory(plotType);
-    const meta = baseMeta();
-
-    const keywords = Array.from(
-      new Set([
-        industry,
-        stage,
-        plot,
-        ...(meta.emotions || []),
-        "스토리",
-        "브랜드",
-      ]),
-    ).slice(0, 10);
-
-    // 약간 변주: 훅/엔딩 시드 반영
-    const altHook = pick(hooks, variantSeed);
-    const altEnd = pick(endings, variantSeed);
-
-    const story2 =
-      variantSeed === 0
-        ? story
-        : story.replace(/【훅】.*\n?/m, (m) =>
-            m.replace(/【훅】.*/, `【훅】 ${altHook}`),
-          );
-
-    return {
-      id,
-      name,
-      oneLiner: meta.oneLiner,
-      meta: meta.meta,
-      plot,
-      emotions: meta.emotions,
-      story: story2,
-      ending: variantSeed === 0 ? ending : altEnd,
-      keywords,
-    };
-  };
-
-  return [
-    mk("story_1", "A · 문제 해결형", p1, 0),
-    mk("story_2", "B · 비전 제시형", p2, 1),
-    mk("story_3", "C · 탄생 신화형", p3, 2),
-  ];
-}
 
 const INITIAL_FORM = {
   // ✅ 기업 진단에서 자동 반영(편집 X)
@@ -666,34 +494,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     }
   };
 
-  // -------------------------연동 시 삭제--------------------------
-  // const handleGenerateCandidates = async (mode = "generate") => {
-  //   // 🔌 BACKEND 연동 포인트 (브랜드 스토리 컨설팅 - AI 분석 요청 버튼)
-  //   // - 백엔드 연동 시(명세서 기준):
-  //   //   A) 인터뷰 저장(공통): POST /brands/interview
-  //   //   B) 스토리 생성:     POST /brands/story (또는 유사)
-  //   if (!canAnalyze) {
-  //     alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
-  //     return;
-  //   }
-
-  //   setAnalyzing(true);
-  //   try {
-  //     const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
-  //     if (mode === "regen") setRegenSeed(nextSeed);
-
-  //     await new Promise((r) => setTimeout(r, 450));
-  //     const nextCandidates = generateStoryCandidates(form, nextSeed);
-
-  //     setCandidates(nextCandidates);
-  //     setSelectedId(null);
-  //     persistResult(nextCandidates, null, nextSeed);
-  //     scrollToResult();
-  //   } finally {
-  //     setAnalyzing(false);
-  //   }
-  // };
-  // ----------------------------------------------------------------
 
   // ================================================================
   // [BACKEND 연동] - 
@@ -791,7 +591,6 @@ const handleGoNext = async () => {
 
   try {
     // DTO: { selectedByUser: String }
-    // 보통은 selected.story(본문) 저장이 자연스러움
     const body = { selectedByUser: selected.story };
 
     
@@ -883,7 +682,7 @@ const handleGoNext = async () => {
   };
 
 
-  // ================== UI 관련 ========================
+  // ==================== UI 관련 ========================
 
   return (
     <div className="diagInterview consultingInterview">
