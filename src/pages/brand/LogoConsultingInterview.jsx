@@ -11,6 +11,24 @@ import ConsultingFlowMini from "../../components/consulting/ConsultingFlowMini.j
 import PolicyModal from "../../components/policy/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../../components/policy/PolicyContents.jsx";
 
+import {
+  readPipeline,
+  setStepResult,
+  clearStepsFrom,
+  upsertPipeline,
+  readDiagnosisDraftForm
+  // buildDiagnosisSummaryFromDraft
+} from "../../utils/brandPipelineStorage.js";
+
+import {
+  userSetItem,
+  userRemoveItem,
+  userSafeParse,
+} from "../../utils/userLocalStorage.js";
+
+// ============= [백엔드 연동] api import ============
+import { apiRequest } from "../../api/client.js";
+
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_logo_v1";
@@ -355,9 +373,10 @@ export default function LogoConsultingInterview({ onLogout }) {
   // ✅ draft 로드 (+ 구버전 최소 마이그레이션)
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
+      // 2026-01-29
+      // user에 따라 다르게 
+      const parsed = userSafeParse(STORAGE_KEY); 
+      if (!parsed) return;
 
       const loaded =
         parsed?.form && typeof parsed.form === "object" ? parsed.form : null;
@@ -410,7 +429,7 @@ export default function LogoConsultingInterview({ onLogout }) {
   // ✅ 기업 진단&인터뷰 값 자동 반영(중복 질문 제거)
   useEffect(() => {
     try {
-      const diag = readDiagnosisForm();
+      const diag = readDiagnosisDraftForm();
       if (!diag) return;
 
       const next = {
@@ -455,9 +474,8 @@ export default function LogoConsultingInterview({ onLogout }) {
   // ✅ 결과 로드(후보/선택)
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(RESULT_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
+      const parsed = userSafeParse(RESULT_KEY);
+      if (!parsed) return;
       if (Array.isArray(parsed?.candidates)) setCandidates(parsed.candidates);
       if (parsed?.selectedId) setSelectedId(parsed.selectedId);
       if (typeof parsed?.regenSeed === "number") setRegenSeed(parsed.regenSeed);
@@ -472,7 +490,9 @@ export default function LogoConsultingInterview({ onLogout }) {
     const t = setTimeout(() => {
       try {
         const payload = { form, updatedAt: Date.now() };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        // 2026-01-29
+        // 유저마다 다르게
+        userSetItem(STORAGE_KEY, JSON.stringify(payload));
         setLastSaved(new Date(payload.updatedAt).toLocaleString());
         setSaveMsg("자동 저장됨");
       } catch {
@@ -487,7 +507,9 @@ export default function LogoConsultingInterview({ onLogout }) {
     const updatedAt = Date.now();
 
     try {
-      localStorage.setItem(
+      // 2026-01-29
+      // 유저마다 다르게
+      userSetItem(
         RESULT_KEY,
         JSON.stringify({
           candidates: nextCandidates,
@@ -503,7 +525,9 @@ export default function LogoConsultingInterview({ onLogout }) {
     try {
       const selected =
         nextCandidates.find((c) => c.id === nextSelectedId) || null;
-      localStorage.setItem(
+      // 2026-01-29
+      // 유저마다 다르게
+      userSetItem(
         LEGACY_KEY,
         JSON.stringify({
           form,
@@ -519,51 +543,121 @@ export default function LogoConsultingInterview({ onLogout }) {
     }
   };
 
+  // ============================================
+  // [BACKEND 연동 - 후보자 생성]
+  // --------------------------------------------
   const handleGenerateCandidates = async (mode = "generate") => {
-    // 🔌 BACKEND 연동 포인트 (로고 컨설팅 - AI 분석 요청 버튼)
-    // - 백엔드 연동 시(명세서 기준):
-    //   A) 인터뷰 저장(공통): POST /brands/interview
-    //   B) 로고 가이드:     POST /brands/logo (또는 유사)
-    if (!canAnalyze) {
-      alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
-      return;
-    }
+  if (!canAnalyze) {
+    alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
+    return;
+  }
 
-    setAnalyzing(true);
-    try {
-      const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
-      if (mode === "regen") setRegenSeed(nextSeed);
+  const p = readPipeline();
+  const brandId = p?.brandId;
 
-      await new Promise((r) => setTimeout(r, 450));
-      const nextCandidates = generateLogoCandidates(form, nextSeed);
+  if (!brandId) {
+    alert("brandId가 없습니다. 기업진단을 먼저 완료해주세요.");
+    return;
+  }
 
-      setCandidates(nextCandidates);
-      setSelectedId(null);
-      persistResult(nextCandidates, null, nextSeed);
-      scrollToResult();
-    } finally {
-      setAnalyzing(false);
-    }
-  };
+  setAnalyzing(true);
+  try {
+    const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
+    if (mode === "regen") setRegenSeed(nextSeed);
+
+    // ✅ 백엔드가 기대하는 body 스키마에 맞춰 조정 필요
+    // (지금은 안전하게 inputs로 감싸는 안 / 혹은 form 그대로 보내는 안 중 택1)
+    const res = await apiRequest(`/brands/${brandId}/logo`, {
+      method: "POST",
+      data: {
+        regenSeed: nextSeed,
+        inputs: form, // <-- 백엔드 DTO가 form 직접이면 inputs 제거하고 form을 직접 보내기
+      },
+    });
+
+    const data = res?.data ?? res;
+    
+    const nextCandidates = Object.entries(data || {}).map(([key, url], idx) => ({
+      id: key,
+      name: `로고안 ${idx + 1}`,
+      summary: "",
+      imageUrl: String(url), // ✅ 혹시 몰라서 문자열화
+      }));
+      
+      console.log("logo data:", data);
+      console.log("nextCandidates:", nextCandidates);
+
+    setCandidates(nextCandidates);
+    setSelectedId(null);
+
+    // (선택) 로컬 결과 저장은 유지해도 됨 (유저별)
+    persistResult(nextCandidates, null, nextSeed);
+
+    scrollToResult();
+  } finally {
+    setAnalyzing(false);
+  }
+};
+// ================================================
 
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
   };
 
-  const handleFinish = () => {
-    navigate("/mypage/brand-results");
+  // ================================================
+  // [BACKEND 연동] - 선택 후 저장
+  // ------------------------------------------------
+const handleFinish = async () => {
+  const p = readPipeline();
+  const brandId = p?.brandId; // 1. brandId 정의 추가
+
+  if (!brandId) {
+    alert("brandId가 없습니다. 기업진단을 먼저 완료해주세요.");
+    return;
+  }
+  if (!selectedId) {
+    alert("후보 1개를 선택해주세요.");
+    return;
+  }
+
+  // 프론트에서 선택한 후보 객체 찾기
+  const selected = candidates.find((c) => c.id === selectedId);
+
+  try {
+    // 2. selectedUrl 대신 selected.imageUrl을 사용하도록 수정
+    await apiRequest(`/brands/${brandId}/logo/select`, {
+      method: "POST",
+      data: { selectedByUser: selected?.imageUrl || "" }, 
+    });
+
+    setStepResult("logo", {
+      candidates,
+      selectedId,
+      selected,
+    });
+
+    upsertPipeline({ brandId });
+
+    navigate("/main");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  } catch (e) {
+    alert("저장에 실패했습니다. 백엔드 응답을 확인해주세요.");
+    console.error(e);
+  }
+};
+  // ===============================================
 
   const handleResetAll = () => {
     const ok = window.confirm("입력/결과를 모두 초기화할까요?");
     if (!ok) return;
 
     try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(RESULT_KEY);
-      localStorage.removeItem(LEGACY_KEY);
+      //2026-01-29
+      //유저마다 다르게
+      userRemoveItem(STORAGE_KEY);
+      userRemoveItem(RESULT_KEY);
+      userRemoveItem(LEGACY_KEY);
     } catch {
       // ignore
     }
@@ -616,6 +710,7 @@ export default function LogoConsultingInterview({ onLogout }) {
     setLastSaved("-");
   };
 
+  // ================== UI 관련 =====================
   return (
     <div className="diagInterview consultingInterview">
       <PolicyModal
@@ -873,7 +968,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 결과 영역 */}
+              {/* ---------------------------- 결과 영역 ------------------------- */}
               <div ref={refResult} />
 
               {analyzing ? (
@@ -925,6 +1020,27 @@ export default function LogoConsultingInterview({ onLogout }) {
                               gap: 10,
                             }}
                           >
+                           {/* 
+                            [BACKEND 연동] - 이미지가 나오는 부분 
+                           */}
+                           {c.imageUrl ? (
+                            <img
+                            src={c.imageUrl}
+                            alt={c.name}
+                            style={{
+                              width: "100%",
+                              maxWidth: 420,
+                              borderRadius: 12,
+                              marginTop: 10,
+                              border: "1px solid rgba(0,0,0,0.08)",
+                            }}
+                            loading="lazy"
+                            />
+                          ) : (
+                          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
+                            (백엔드 연동 후 로고 이미지가 표시됩니다)
+                            </div>
+                          )}
                             <div>
                               <div style={{ fontWeight: 900, fontSize: 15 }}>
                                 {c.name}
@@ -1079,20 +1195,21 @@ export default function LogoConsultingInterview({ onLogout }) {
                 <h4 className="sideSubTitle">빠른 작업</h4>
 
                 <button
-                  type="button"
-                  className={`btn primary ${canAnalyze && !analyzing ? "" : "disabled"}`}
-                  onClick={() =>
-                    handleGenerateCandidates(hasResult ? "regen" : "generate")
-                  }
-                  disabled={!canAnalyze || analyzing}
-                  style={{ width: "100%", marginBottom: 8 }}
+                type="button"
+                className={`btn primary ${canAnalyze && !analyzing ? "" : "disabled"}`}
+                onClick={() => {
+                  console.log("✅ AI 버튼 클릭됨");
+                  handleGenerateCandidates(hasResult ? "regen" : "generate");
+                }}
+                disabled={!canAnalyze || analyzing}
+                style={{ width: "100%", marginBottom: 8 }}
                 >
                   {analyzing
-                    ? "생성 중..."
-                    : hasResult
-                      ? "AI 분석 재요청"
-                      : "AI 분석 요청"}
-                </button>
+                  ? "생성 중..."
+                  : hasResult
+                  ? "AI 분석 재요청"
+                  : "AI 분석 요청"}
+                  </button>
 
                 <button
                   type="button"
@@ -1114,13 +1231,21 @@ export default function LogoConsultingInterview({ onLogout }) {
                 <h4 className="sideSubTitle">마무리</h4>
                 {canFinish ? (
                   <button
-                    type="button"
-                    className="btn primary"
-                    onClick={handleFinish}
-                    style={{ width: "100%" }}
+                  type="button"
+                  className="btn primary"
+                  onClick={() => {
+                    console.log("✅ 완료 버튼 클릭됨", {
+                      canFinish,
+                      selectedId,
+                      selectedCandidate: candidates.find((x) => x.id === selectedId),
+                    });
+                    handleFinish();
+                  }}
+
+                  style={{ width: "100%" }}
                   >
                     완료(히스토리로)
-                  </button>
+                    </button>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
                     * 후보 1개를 선택하면 완료 버튼이 표시됩니다.
