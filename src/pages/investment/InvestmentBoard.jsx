@@ -212,17 +212,20 @@ export default function InvestmentBoard({ onLogout }) {
           </div>
 
           <div className="invest-chips">
-            {companySizeOptions.map((value) => (
+            {companySizeOptions.map((value) => {
+              const active = size === value;
+              return (
               <button
-                key={value}
-                type="button"
-                className={`chip ${size === value ? "is-active" : ""}`}
-                onClick={() => setSize(value)}
+              key={value}
+              type="button"
+              className={`filter-chip ${active ? "is-active" : ""}`}
+              onClick={() => setSize(value)}
               >
                 {value === "all" ? "전체" : value}
-              </button>
-            ))}
-          </div>
+                </button>
+                );
+                })}
+                </div>
         </section>
 
         <section className="invest-grid" aria-label="투자유치 게시글 목록">

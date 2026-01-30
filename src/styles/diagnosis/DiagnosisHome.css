@@ -1,4 +1,4 @@
-/* src/styles/DiagnosisHome.css */
+/* src/styles/diagnosis/DiagnosisHome.css */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
 
 .diagHome,
@@ -15,6 +15,11 @@
   --text: #111827;
   --muted: #6b7280;
 
+  --border: rgba(17, 24, 39, 0.08);
+  --shadowSoft: 0 10px 26px rgba(17, 24, 39, 0.06);
+
+  --radius: 16px;
+
   min-height: 100vh;
   background:
     radial-gradient(
@@ -26,6 +31,18 @@
   color: var(--text);
   font-family: "Manrope", "Noto Sans KR", sans-serif;
 }
+
+/* ✅ Hero */
+.diagHome__hero {
+  background: transparent;
+  padding: 0;
+}
+
+.diagHome__heroInner {
+  width: 100%;
+  margin: 0;
+}
+
 /* ✅ 배너 */
 .diagHome__banner {
   position: relative;
@@ -428,10 +445,6 @@
   }
   .diagHome__bannerSub {
     font-size: 14px;
-  }
-  .main-header {
-    grid-template-columns: 1fr;
-    align-items: start;
   }
   .diagHome__topGrid {
     grid-template-columns: 1fr;

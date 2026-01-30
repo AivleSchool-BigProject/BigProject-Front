@@ -639,7 +639,7 @@ const handleFinish = async () => {
 
     upsertPipeline({ brandId });
 
-    navigate("/main");
+    navigate("/mypage");
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (e) {
     alert("저장에 실패했습니다. 백엔드 응답을 확인해주세요.");

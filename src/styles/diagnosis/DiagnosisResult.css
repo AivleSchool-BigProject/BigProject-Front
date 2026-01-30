@@ -286,3 +286,49 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ====== 추가 UI (키워드 칩 / details 접기) ====== */
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.chipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chip {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.detailsWrap details {
+  border: 1px dashed rgba(23, 102, 229, 0.35);
+  background: rgba(23, 102, 229, 0.04);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.detailsWrap summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+  color: #0f172a;
+  list-style: none;
+}
+
+.detailsWrap summary::-webkit-details-marker {
+  display: none;
+}
+
+.detailsWrap details[open] summary {
+  margin-bottom: 12px;
+}
